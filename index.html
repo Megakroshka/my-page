@@ -233,6 +233,30 @@ dialog::backdrop{background:rgba(4,3,10,.55);backdrop-filter:blur(3px)}
 @keyframes beat{0%,40%,100%{transform:scale(1)}15%{transform:scale(1.22)}28%{transform:scale(1.05)}}
 .brand .beat{width:22px;height:22px}
 @media (prefers-reduced-motion:reduce){.eye .blink,.eye .look,.codewin .scroll,.beat{animation:none}}
+/* гифка в шапке */
+.herogif{position:absolute;right:22px;top:50%;transform:translateY(-50%);height:118px;max-width:200px;object-fit:cover;border-radius:16px;
+  border:2px solid color-mix(in srgb,var(--a) 55%,transparent);box-shadow:0 8px 28px color-mix(in srgb,var(--a) 40%,transparent)}
+@media (max-width:620px){.herogif{display:none}}
+/* база знаний */
+dialog.wide{width:min(1000px,96vw)}
+.doctext{width:100%;min-height:52vh;border:1px solid var(--line);border-radius:10px;padding:14px;background:color-mix(in srgb,var(--ink) 4%,transparent);color:var(--ink);
+  font:13.5px/1.6 ui-monospace,Consolas,"Courier New",monospace;resize:vertical;tab-size:2}
+.doctext:focus{outline:none;border-color:var(--acc)}
+.doctext[readonly]{opacity:.85;border-style:dashed}
+.docbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0 8px;font-size:13px;color:var(--soft)}
+.docbar .r{display:flex;gap:6px;flex-wrap:wrap}
+.docbar button{border:1px solid var(--line);background:none;border-radius:8px;padding:5px 10px;font-size:13px}
+.docbar button:hover{border-color:var(--acc);color:var(--acc)}
+.vers{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;font-size:13px;color:var(--soft)}
+.verwarn{font-size:13px;color:var(--test);margin:0 0 8px}
+.ib.docs{width:auto;padding:0 8px;gap:4px;display:inline-flex;align-items:center}
+.ib.docs small{font-size:12px;font-weight:700}
+.ib.docs.has{color:var(--acc2)}
+.dlist{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.dlist button.dl{display:flex;justify-content:space-between;gap:10px;text-align:left;border:1px solid var(--line);background:none;border-radius:10px;padding:10px 12px}
+.dlist button.dl:hover{border-color:var(--acc)}
+.dlist small{color:var(--soft)}
+.pchip{font-size:12px;padding:1px 8px;border-radius:999px;background:color-mix(in srgb,var(--acc2) 15%,transparent);color:var(--acc2)}
 /* стикеры */
 .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:22px 18px;padding:8px 2px 20px}
 .sticky{position:relative;min-height:180px;padding:22px 14px 12px;border-radius:2px 2px 14px 2px;color:#2B2620;
@@ -282,6 +306,7 @@ dialog::backdrop{background:rgba(4,3,10,.55);backdrop-filter:blur(3px)}
   <main id="main"></main>
 </div>
 <dialog id="dlg"><div class="dlg" id="dlgbody"></div></dialog>
+<input type="file" id="txtFile" accept=".txt,.md,.json,.csv,text/*" hidden>
 <input type="file" id="importFile" accept=".json,.html,application/json,text/html" hidden>
 <div class="toast" id="toast"></div>
 <script>
@@ -305,6 +330,7 @@ const IC = {
   fav:'<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/>',
   pin:'<path d="M9 3h6l-1 6 4 4H6l4-4-1-6Z"/><path d="M12 13v8"/>',
   heart:'<path d="M12 21s-8-5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6-8 11-8 11Z"/>',
+  kb:'<path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2Z"/><path d="M22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8Z"/>',
   lists:'<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1.5"/><circle cx="4" cy="12" r="1.5"/><circle cx="4" cy="18" r="1.5"/>',
 };
 const ico=(id,s=18)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[id]}</svg>`;
@@ -323,6 +349,7 @@ const SECTIONS = [
   {id:"apps",title:"Приложения",sub:"Программы и где их взять."},
   {id:"refs",title:"Справочники",sub:"Справочная информация."},
   {id:"games",title:"Игры",sub:"Для себя."},
+  {id:"kb",title:"База знаний",sub:"Промпты и большие тексты. Хранятся версии, можно привязать к проектам."},
   "sep",
   {id:"vault",title:"Пароли",sub:"Зашифрованы мастер-паролем. Без него их не прочитать, даже открыв файл."},
   {id:"lists",title:"Списки ASR / TTS / LLM",sub:"Варианты, которые выбираются в проектах."},
@@ -355,7 +382,7 @@ function autoName(u){try{const x=new URL(safeUrl(u));if(x.hostname.includes("doc
 const arr=v=>Array.isArray(v)?v.filter(Boolean):(v?[v]:[]);
 function normalize(s){s=s&&typeof s==="object"?s:{};
   const items=(Array.isArray(s.items)?s.items:[]).map(i=>i.sec==="projects"?{...i,asr:arr(i.asr),tts:arr(i.tts),llm:arr(i.llm)}:i);
-  return {v:2,at:s.at||0,theme:s.theme||"neon",items,notes:Array.isArray(s.notes)?s.notes:[],lists:{asr:s.lists?.asr||[],tts:s.lists?.tts||[],llm:s.lists?.llm||[]},vault:s.vault||null}}
+  return {v:2,at:s.at||0,theme:s.theme||"neon",items,notes:Array.isArray(s.notes)?s.notes:[],docs:Array.isArray(s.docs)?s.docs.map(d=>({...d,projects:arr(d.projects),history:Array.isArray(d.history)?d.history:[]})):[],lists:{asr:s.lists?.asr||[],tts:s.lists?.tts||[],llm:s.lists?.llm||[]},vault:s.vault||null}}
 function applyTheme(){if(!state)return;document.documentElement.dataset.theme=state.theme||"neon";try{localStorage.setItem("spravochnik-theme",state.theme)}catch{}}
 
 /* ---------- GitHub ---------- */
@@ -580,7 +607,7 @@ const I={
   search:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
   user:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
 };
-const ACC={fav:"#FFB020",notes:"#FFC93D",sites:"#2EF2FF",projects:"#9D6BFF",scripts:"#3DFF8E",sheets:"#34D399",asr:"#FF7AB6",tts:"#FFB86B",learn:"#7AA2FF",apps:"#5EEAD4",refs:"#C4B5FD",games:"#FF6B9A",vault:"#FFC43D",lists:"#2EF2FF"};
+const ACC={kb:"#B57CFF",fav:"#FFB020",notes:"#FFC93D",sites:"#2EF2FF",projects:"#9D6BFF",scripts:"#3DFF8E",sheets:"#34D399",asr:"#FF7AB6",tts:"#FFB86B",learn:"#7AA2FF",apps:"#5EEAD4",refs:"#C4B5FD",games:"#FF6B9A",vault:"#FFC43D",lists:"#2EF2FF"};
 function skyline(id){
   let seed=[...id].reduce((a,c)=>a*31+c.charCodeAt(0),7)>>>0;const rnd=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
   const a=ACC[id];let back="",front="",win="";
@@ -598,7 +625,7 @@ function skyline(id){
 }
 
 /* ---------- отрисовка ---------- */
-function count(id){if(id==="vault")return vaultItems?vaultItems.length:"";if(id==="fav")return state.items.filter(i=>i.starred).length||"";if(id==="notes")return state.notes.length||"";if(id==="lists")return state.lists.asr.length+state.lists.tts.length+state.lists.llm.length||"";return state.items.filter(i=>i.sec===id).length||""}
+function count(id){if(id==="vault")return vaultItems?vaultItems.length:"";if(id==="kb")return state.docs.length||"";if(id==="fav")return state.items.filter(i=>i.starred).length||"";if(id==="notes")return state.notes.length||"";if(id==="lists")return state.lists.asr.length+state.lists.tts.length+state.lists.llm.length||"";return state.items.filter(i=>i.sec===id).length||""}
 function renderNav(){
   let h=`<div class="brand">${HEART_SVG.replace('id="hg"','id="hg2"').replace("url(#hg)","url(#hg2)")}Coding girl</div>`;
   for(const s of SECTIONS){if(s==="sep"){h+='<div class="navsep"></div>';continue}
@@ -618,7 +645,7 @@ function rowHtml(it,showSec){
   if(url)meta.push(`<span class="dom">${esc(domainOf(url))}</span>`);
   if(it.note)meta.push(esc(it.note));if(it.status==="old")meta.push("старый");
   return `<div class="row ${it.status==="old"?"old":""} ${it.pinned?"pinned":""}">${tag}<div style="min-width:0">${nm}${it.pinned?`<span class="mark" title="Закреплено">${ico("pin",14)}</span>`:""}<div class="meta">${meta.map(m=>`<span>${m}</span>`).join("")}</div>${s.stack?stackPills(it):""}</div>
-  <div class="acts"><button class="ib star ${it.starred?"on":""}" title="${it.starred?"Убрать из избранного":"В избранное"}" data-star="${it.id}">${ico("fav",17)}</button><button class="ib pin ${it.pinned?"on":""}" title="${it.pinned?"Открепить":"Закрепить сверху"}" data-pin="${it.id}">${ico("pin",17)}</button>${url?`<button class="ib" title="Скопировать ссылку" data-copy="${esc(url)}">${I.copy}</button>`:""}<button class="ib" title="Изменить" data-edit="${it.id}">${I.edit}</button></div></div>`;
+  <div class="acts">${s.id==="projects"?(()=>{const n=state.docs.filter(d=>d.projects.includes(it.id)).length;return `<button class="ib docs ${n?"has":""}" title="Документы проекта" data-pdocs="${it.id}">${ico("kb",16)}${n?`<small>${n}</small>`:""}</button>`})():""}<button class="ib star ${it.starred?"on":""}" title="${it.starred?"Убрать из избранного":"В избранное"}" data-star="${it.id}">${ico("fav",17)}</button><button class="ib pin ${it.pinned?"on":""}" title="${it.pinned?"Открепить":"Закрепить сверху"}" data-pin="${it.id}">${ico("pin",17)}</button>${url?`<button class="ib" title="Скопировать ссылку" data-copy="${esc(url)}">${I.copy}</button>`:""}<button class="ib" title="Изменить" data-edit="${it.id}">${I.edit}</button></div></div>`;
 }
 function topBar(){
   const canAdd=!query&&cur!=="lists"&&cur!=="notes"&&cur!=="fav"&&(cur!=="vault"||vaultItems);
@@ -626,12 +653,13 @@ function topBar(){
   ${canAdd?`<button class="btn add" data-act="add">+ Добавить</button>`:""}<button class="btn icon" data-act="themes" title="Сменить тему">${ico("palette",18)}</button><button class="btn save ${dirty?"":"clean"}" id="saveBtn" data-act="save">Сохранить<span class="dot"></span></button></div>
   <div class="savehint ${dirty?"dirty":""}" id="savehint"></div>`;
 }
-const hero=(id,title,sub)=>`<div class="hero" style="--a:${ACC[id]}"><div class="scene">${skyline(id)}</div><div class="hero-in"><div class="htile">${ico(id,26)}</div><div><h1>${esc(title)}</h1><p class="sub">${esc(sub)}</p></div></div></div>`;
+let hasGif=false;{const gi=new Image();gi.onload=()=>{hasGif=true;if(state&&!document.body.classList.contains("gated"))render()};gi.src="login.gif"}
+const hero=(id,title,sub)=>`<div class="hero" style="--a:${ACC[id]}"><div class="scene">${skyline(id)}</div>${hasGif?'<img class="herogif" src="login.gif" alt="">':""}<div class="hero-in"><div class="htile">${ico(id,26)}</div><div><h1>${esc(title)}</h1><p class="sub">${esc(sub)}</p></div></div></div>`;
 function render(){
   renderNav();
   const m=$("#main"),focused=document.activeElement?.id==="q",pos=focused?$("#q").selectionStart:0;
   let body;
-  if(query)body=renderSearch();else if(cur==="vault")body=renderVault();else if(cur==="lists")body=renderLists();else if(cur==="notes")body=renderNotes();else if(cur==="fav")body=renderFav();else body=renderSection(SEC[cur]);
+  if(query)body=renderSearch();else if(cur==="vault")body=renderVault();else if(cur==="lists")body=renderLists();else if(cur==="notes")body=renderNotes();else if(cur==="fav")body=renderFav();else if(cur==="kb")body=renderKb();else body=renderSection(SEC[cur]);
   m.innerHTML=topBar()+body+`<div class="mobilefoot"><button class="btn" data-act="import">Импорт из копии</button><button class="btn" data-act="exportjson">Скачать копию .json</button></div>`;
   updateSaveUI();
   if(focused){const q=$("#q");q.focus();q.setSelectionRange(pos,pos)}
@@ -668,12 +696,14 @@ function renderSearch(){
   const hit=state.items.filter(i=>[i.name,i.url,i.note,arr(i.asr).join(" "),arr(i.tts).join(" "),arr(i.llm).join(" ")].some(v=>(v||"").toLowerCase().includes(q)));
   hit.sort(pinFirst);
   const nh=state.notes.filter(n=>(n.text||"").toLowerCase().includes(q));
+  const dh=state.docs.filter(d=>(d.title+" "+d.text).toLowerCase().includes(q)).sort(docSort);
   const vh=vaultItems?vaultItems.filter(v=>[v.where,v.login,v.note,v.url].some(x=>(x||"").toLowerCase().includes(q))):[];
-  let h=`<div class="hero plain"><div class="hero-in"><div><h1>Поиск</h1><p class="sub">Найдено: ${hit.length+vh.length+nh.length}${state.vault&&!vaultItems?". Пароли закрыты, в поиск они не попадают":""}</p></div></div></div>`;
+  let h=`<div class="hero plain"><div class="hero-in"><div><h1>Поиск</h1><p class="sub">Найдено: ${hit.length+vh.length+nh.length+dh.length}${state.vault&&!vaultItems?". Пароли закрыты, в поиск они не попадают":""}</p></div></div></div>`;
   if(hit.length)h+=`<div class="list">${hit.map(i=>rowHtml(i,true)).join("")}</div>`;
   if(vh.length)h+=`<div class="group">Пароли<span class="cnt">${vh.length}</span></div><div class="list">${vh.map(vaultRow).join("")}</div>`;
+  if(dh.length)h+=`<div class="group">База знаний<span class="cnt">${dh.length}</span></div><div class="list">${dh.map(docRow).join("")}</div>`;
   if(nh.length)h+=`<div class="group">Заметки<span class="cnt">${nh.length}</span></div><div class="board">${nh.map(stickyHtml).join("")}</div>`;
-  if(!hit.length&&!vh.length&&!nh.length)h+=`<div class="empty-state">Ничего не нашлось. Попробуй часть названия или адреса.</div>`;
+  if(!hit.length&&!vh.length&&!nh.length&&!dh.length)h+=`<div class="empty-state">Ничего не нашлось. Попробуй часть названия или адреса.</div>`;
   return h;
 }
 function vaultRow(v){
@@ -729,6 +759,75 @@ function openThemes(){
    <div class="dlgfoot"><div class="r"><button class="btn primary" data-act="close">Готово</button></div></div>`,{kind:"themes"});
 }
 
+/* ---------- база знаний ---------- */
+const projLabel=p=>`${p.name||"Без названия"} (${p.engine||"?"}, ${p.env==="test"?"тест":"прод"})`;
+const projects=()=>state.items.filter(i=>i.sec==="projects").sort((a,b)=>(b.engine||"").localeCompare(a.engine||"")||(a.env||"").localeCompare(b.env||"")||(a.name||"").localeCompare(b.name||"","ru"));
+const fmtDate=t=>t?new Date(t).toLocaleString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"";
+const lines=t=>(t||"").split("\n").length;
+function docRow(d){
+  const ps=d.projects.map(id=>state.items.find(i=>i.id===id)).filter(Boolean);
+  const first=(d.text||"").trim().split("\n")[0].slice(0,120);
+  return `<div class="row ${d.pinned?"pinned":""}"><div class="tag t0">${ico("kb",16)}</div><div style="min-width:0">
+   <button class="name" style="border:0;background:none;padding:0;cursor:pointer;text-align:left" data-dopen="${d.id}">${esc(d.title||"Без названия")}</button>${d.pinned?`<span class="mark">${ico("pin",14)}</span>`:""}
+   <div class="meta">${ps.map(p=>`<span class="pchip">${esc(projLabel(p))}</span>`).join("")}<span>${lines(d.text)} строк</span><span>обновлено ${fmtDate(d.at)}</span>${d.history.length?`<span>версий: ${d.history.length+1}</span>`:""}</div>
+   ${first?`<div class="meta" style="font-family:ui-monospace,Consolas,monospace;font-size:12px">${esc(first)}</div>`:""}</div>
+   <div class="acts"><button class="ib pin ${d.pinned?"on":""}" title="Закрепить" data-dpin="${d.id}">${ico("pin",17)}</button><button class="ib" title="Скопировать текст" data-dcopy="${d.id}">${I.copy}</button><button class="ib" title="Открыть" data-dopen="${d.id}">${I.edit}</button></div></div>`;
+}
+const docSort=(a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(b.at||0)-(a.at||0);
+function renderKb(){
+  const s=SEC.kb;let h=hero("kb",s.title,s.sub);
+  const ps=projects();
+  h+=`<div class="filters"><button class="chip ${kbFilter==="all"?"on":""}" data-kbf="all">Все</button><button class="chip ${kbFilter==="none"?"on":""}" data-kbf="none">Без проекта</button>${ps.filter(p=>state.docs.some(d=>d.projects.includes(p.id))).map(p=>`<button class="chip ${kbFilter===p.id?"on":""}" data-kbf="${p.id}">${esc(p.name)}</button>`).join("")}</div>`;
+  let docs=[...state.docs];
+  if(kbFilter==="none")docs=docs.filter(d=>!d.projects.length);else if(kbFilter!=="all")docs=docs.filter(d=>d.projects.includes(kbFilter));
+  if(!docs.length)return h+emptyBox("Документов пока нет.","+ Новый документ");
+  return h+`<div class="list">${docs.sort(docSort).map(docRow).join("")}</div>`;
+}
+let kbFilter="all";
+function openDoc(doc,presetProject){
+  const isNew=!doc;
+  doc=doc||{id:uid(),title:"",text:"",projects:presetProject?[presetProject]:[],history:[],at:0};
+  const ps=projects();
+  const vers=doc.history.length?`<div class="vers">Версия: <button type="button" class="chip on" data-dver="-1">Актуальная</button>${doc.history.map((v,i)=>`<button type="button" class="chip" data-dver="${i}">${i===0?"Предыдущая":"Старая"} · ${fmtDate(v.at)}</button>`).join("")}</div>`:"";
+  const h=`<h2>${isNew?"Новый документ":"Документ"}</h2>
+  <label class="f">Название<input id="d-title" value="${esc(doc.title)}" placeholder="Например: Промпт оператора, движок 4"></label>
+  <div class="multi"><div class="mh"><b>ПРОЕКТЫ</b><span>можно несколько</span></div><div class="mopts" id="d-projs">${ps.length?ps.map(p=>`<button type="button" class="mopt ${doc.projects.includes(p.id)?"on":""}" data-mv="${p.id}">${esc(projLabel(p))}</button>`).join(""):'<span style="font-size:13px;color:var(--soft)">Проектов пока нет</span>'}</div></div>
+  ${vers}<p class="verwarn" id="d-warn" hidden>Это старая версия, только для чтения. Можно скопировать её или вернуть.</p>
+  <div class="docbar"><span id="d-info"></span><span class="r"><button type="button" data-act="dupload">Загрузить .txt</button><button type="button" data-act="ddownload">Скачать .txt</button><button type="button" data-act="dcopytxt">Копировать всё</button><button type="button" data-act="drestore" hidden>Вернуть эту версию</button></span></div>
+  <textarea id="d-text" class="doctext" spellcheck="false" placeholder="Вставь сюда промпт или любой текст">${esc(doc.text)}</textarea>
+  <div class="dlgfoot">${isNew?"":`<button class="btn danger" data-act="ddel">Удалить</button>`}<div class="r"><button class="btn" data-act="close">Закрыть</button><button class="btn primary" data-act="dsave">Сохранить</button></div></div>`;
+  showDlg(h,{kind:"doc",doc,isNew,draft:doc.text,ver:-1},true);
+  docInfo();
+}
+function docInfo(){const t=$("#d-text");if(t&&$("#d-info"))$("#d-info").textContent=`${lines(t.value)} строк · ${t.value.length} символов`}
+function showVer(i){
+  const c=dlgCtx,t=$("#d-text");
+  if(c.ver===-1)c.draft=t.value;
+  c.ver=i;
+  document.querySelectorAll("[data-dver]").forEach(b=>b.classList.toggle("on",+b.dataset.dver===i));
+  if(i===-1){t.value=c.draft;t.readOnly=false}else{t.value=c.doc.history[i].text;t.readOnly=true}
+  $("#d-warn").hidden=i===-1;document.querySelector('[data-act="drestore"]').hidden=i===-1;docInfo();
+}
+function saveDoc(){
+  const c=dlgCtx;if(c.ver!==-1)showVer(-1);
+  const title=$("#d-title").value.trim()||"Без названия",text=$("#d-text").value;
+  const projs=[...document.querySelectorAll("#d-projs .mopt.on")].map(b=>b.dataset.mv);
+  let d=state.docs.find(x=>x.id===c.doc.id);
+  if(!d){d={...c.doc,history:[]};state.docs.push(d)}
+  if(!c.isNew&&text!==d.text){d.history.unshift({text:d.text,at:d.at||Date.now()});d.history=d.history.slice(0,5)}
+  d.title=title;d.text=text;d.projects=projs;if(c.isNew||text!==c.doc.text||!d.at)d.at=Date.now();
+  change();closeDlg();render();toast("Документ сохранён. Не забудь «Сохранить» на GitHub");
+}
+function openProjDocs(pid){
+  const p=state.items.find(i=>i.id===pid);if(!p)return;
+  const docs=state.docs.filter(d=>d.projects.includes(pid)).sort(docSort);
+  const others=state.docs.filter(d=>!d.projects.includes(pid));
+  showDlg(`<h2>Документы: ${esc(p.name)}</h2>
+  <div class="dlist">${docs.length?docs.map(d=>`<button class="dl" data-dopen="${d.id}"><span><b>${esc(d.title||"Без названия")}</b><br><small>${lines(d.text)} строк · обновлено ${fmtDate(d.at)}${d.history.length?` · версий: ${d.history.length+1}`:""}</small></span><span style="color:var(--acc)">Открыть</span></button>`).join(""):'<p style="color:var(--soft);margin:0">К этому проекту пока ничего не привязано.</p>'}</div>
+  ${others.length?`<label class="f">Привязать существующий<select id="pd-link"><option value="">Выбери документ…</option>${others.map(d=>`<option value="${d.id}">${esc(d.title||"Без названия")}</option>`).join("")}</select></label>`:""}
+  <div class="dlgfoot"><div class="r"><button class="btn" data-act="close">Закрыть</button><button class="btn primary" data-pnew="${pid}">+ Новый документ</button></div></div>`,{kind:"pdocs",pid});
+}
+
 /* ---------- формы ---------- */
 function multiStack(k,vals){vals=arr(vals);const all=[...new Set([...state.lists[k],...vals])];
   return `<div class="multi" data-multi="${k}"><div class="mh"><b>${k.toUpperCase()}</b><span>можно несколько</span></div><div class="mopts">${all.length?all.map(o=>`<button type="button" class="mopt ${vals.includes(o)?"on":""}" data-mv="${esc(o)}">${esc(o)}</button>`).join(""):'<span style="font-size:13px;color:var(--soft)">Список пуст, добавь первый вариант</span>'}</div>
@@ -759,7 +858,7 @@ function openVaultItem(v){const isNew=!v;v=v||{};
   <label class="f">Заметка<textarea id="v-note">${esc(v.note||"")}</textarea></label>
   <div class="dlgfoot">${isNew?"":`<button class="btn danger" data-act="vdel">Удалить</button>`}<div class="r"><button class="btn" data-act="close">Отмена</button><button class="btn primary" data-act="vsave">Готово</button></div></div>`,{kind:"vault",v,isNew})}
 let dlgCtx=null;
-function showDlg(h,ctx){dlgCtx=ctx;$("#dlgbody").innerHTML=h;$("#dlg").showModal();setTimeout(()=>{const f=$("#dlgbody input");f&&f.focus()},30)}
+function showDlg(h,ctx,wide){dlgCtx=ctx;$("#dlg").classList.toggle("wide",!!wide);$("#dlgbody").innerHTML=h;if(!$("#dlg").open)$("#dlg").showModal();setTimeout(()=>{const f=$("#dlgbody input");f&&f.focus()},30)}
 function closeDlg(){$("#dlg").close();dlgCtx=null}
 
 /* ---------- события ---------- */
@@ -770,6 +869,13 @@ document.addEventListener("click",async e=>{
   if(d.eng){engFilter=d.eng;render();return}
   if(d.gen){genFilter=d.gen;render();return}
   if(d.envf){envFilter=d.envf;render();return}
+  if(d.kbf){kbFilter=d.kbf;render();return}
+  if(d.dopen){openDoc(state.docs.find(x=>x.id===d.dopen));return}
+  if(d.dcopy){copy(state.docs.find(x=>x.id===d.dcopy)?.text||"");return}
+  if(d.dpin){const x=state.docs.find(y=>y.id===d.dpin);if(x){x.pinned=!x.pinned;change();render()}return}
+  if(d.dver!==undefined){showVer(+d.dver);return}
+  if(d.pdocs){openProjDocs(d.pdocs);return}
+  if(d.pnew){openDoc(null,d.pnew);return}
   if(d.star){const it=state.items.find(i=>i.id===d.star);if(it){it.starred=!it.starred;change();render();toast(it.starred?"Добавлено в избранное":"Убрано из избранного")}return}
   if(d.pin){const it=state.items.find(i=>i.id===d.pin);if(it){it.pinned=!it.pinned;change();render();toast(it.pinned?"Закреплено сверху":"Откреплено")}return}
   if(d.npin){const n=state.notes.find(x=>x.id===d.npin);if(n){n.pinned=!n.pinned;change();render()}return}
@@ -806,8 +912,14 @@ document.addEventListener("click",async e=>{
     case "takeremote":closeDlg();dirty=false;try{localStorage.removeItem(DRAFT_KEY)}catch{}(async()=>{try{remoteBlob=await fetchRemote();state=await decryptBlob(remoteBlob,dataKey);vaultKey=null;vaultItems=null;render();toast("Загружена свежая версия")}catch(e){toast("Не получилось: "+e.message)}})();break;
     case "themes":openThemes();break;
     case "newnote":{const n={id:uid(),text:"",color:NOTE_COLORS[state.notes.length%NOTE_COLORS.length],at:Date.now()};state.notes.push(n);change();render();setTimeout(()=>document.querySelector(`[data-note="${n.id}"]`)?.focus(),0);break}
-    case "add":cur==="vault"?openVaultItem():openItem();break;
-    case "close":closeDlg();break;
+    case "add":cur==="vault"?openVaultItem():cur==="kb"?openDoc():openItem();break;
+    case "dsave":saveDoc();break;
+    case "ddel":if(confirm("Удалить документ со всеми версиями?")){state.docs=state.docs.filter(x=>x.id!==dlgCtx.doc.id);change();closeDlg();render()}break;
+    case "dcopytxt":copy($("#d-text").value);break;
+    case "dupload":$("#txtFile").click();break;
+    case "ddownload":{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([$("#d-text").value],{type:"text/plain;charset=utf-8"}));a.download=(($("#d-title").value.trim()||"document").replace(/[\\/:*?"<>|]/g,"_"))+".txt";document.body.appendChild(a);a.click();a.remove();break}
+    case "drestore":{const c=dlgCtx,txt=c.doc.history[c.ver].text;c.draft=txt;showVer(-1);toast("Версия возвращена в редактор. Нажми «Сохранить»");break}
+    case "close":if(dlgCtx?.kind==="doc"){const c=dlgCtx,t=c.ver===-1?$("#d-text").value:c.draft;if(t!==c.doc.text&&!confirm("Закрыть без сохранения? Изменения в тексте пропадут."))break}closeDlg();break;
     case "saveitem":{const{it,isNew}=dlgCtx,s=SEC[it.sec];const url=$("#f-url").value.trim();let name=$("#f-name").value.trim();
       if(!name&&!url){toast("Укажи ссылку или название");return}if(!name)name=autoName(url);
       const sv=k=>$(`[data-seg="${k}"] .on`)?.dataset.v;const n={...it,name,url,note:$("#f-note").value.trim()};
@@ -815,7 +927,7 @@ document.addEventListener("click",async e=>{
       if(s.stack){n.gender=sv("gender")||"";for(const k of ["asr","tts","llm"])n[k]=[...document.querySelectorAll(`[data-multi="${k}"] .mopt.on`)].map(b=>b.dataset.mv)}
       if(isNew){n.id=uid();state.items.push(n)}else state.items[state.items.findIndex(i=>i.id===it.id)]=n;
       change();closeDlg();render();break}
-    case "del":if(confirm("Удалить запись?")){state.items=state.items.filter(i=>i.id!==dlgCtx.it.id);change();closeDlg();render()}break;
+    case "del":if(confirm("Удалить запись?")){const delId=dlgCtx.it.id;state.docs.forEach(x=>x.projects=x.projects.filter(p=>p!==delId));state.items=state.items.filter(i=>i.id!==delId);change();closeDlg();render()}break;
     case "vcreate":{const a=$("#mp1").value,b=$("#mp2").value;if(a.length<4){toast("Минимум 4 символа");return}if(a!==b){toast("Пароли не совпадают");return}await createVault(a);render();toast("Хранилище создано. Не забудь нажать «Сохранить»");break}
     case "vopen":try{await openVault($("#mp").value);render()}catch{toast("Неверный мастер-пароль")}break;
     case "vlock":vaultKey=null;vaultItems=null;shown.clear();render();break;
@@ -828,19 +940,23 @@ document.addEventListener("click",async e=>{
     case "exportjson":{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,1)],{type:"application/json"}));a.download=`spravochnik-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();break}
   }
 });
-document.addEventListener("change",e=>{const s=e.target;if(s.dataset?.stack&&s.value==="__new"){const k=s.dataset.stack,v=(prompt(`Новый ${k.toUpperCase()}:`)||"").trim();
+document.addEventListener("change",async e=>{const s=e.target;
+  if(s.id==="pd-link"&&s.value){const doc=state.docs.find(x=>x.id===s.value);if(doc){doc.projects.push(dlgCtx.pid);change();openProjDocs(dlgCtx.pid);render();toast("Привязано")}return}
+  if(s.id==="txtFile"){const f=s.files[0];if(f){const txt=await f.text();const ta=$("#d-text");if(ta&&!ta.readOnly){if(!ta.value||confirm("Заменить текст в редакторе содержимым файла?")){ta.value=txt;docInfo()}if(!$("#d-title").value.trim())$("#d-title").value=f.name.replace(/\.[^.]+$/,"")}}s.value="";return}if(s.dataset?.stack&&s.value==="__new"){const k=s.dataset.stack,v=(prompt(`Новый ${k.toUpperCase()}:`)||"").trim();
   if(v){if(!state.lists[k].includes(v)){state.lists[k].push(v);change()}const o=document.createElement("option");o.textContent=v;s.insertBefore(o,s.lastElementChild);s.value=v}else s.value=""}});
 document.addEventListener("input",e=>{if(e.target.id==="q"){query=e.target.value.trim();render();return}
+  if(e.target.id==="d-text"){docInfo();return}
   const nid=e.target.dataset?.note;if(nid){const n=state.notes.find(x=>x.id===nid);if(n){n.text=e.target.value;n.at=Date.now();change()}}});
 document.addEventListener("keydown",e=>{
-  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"||(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="ы"){e.preventDefault();saveFile();return}
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"||(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="ы"){e.preventDefault();if(dlgCtx?.kind==="doc"){saveDoc()}saveFile();return}
+  if(e.key==="Tab"&&e.target.id==="d-text"&&!e.target.readOnly){e.preventDefault();const t=e.target,a=t.selectionStart;t.setRangeText("  ",a,t.selectionEnd,"end");docInfo();return}
   if(e.key==="Enter"){const id=e.target.id;
     if(id==="m"){e.preventDefault();unlock();return}if(id==="m2"){e.preventDefault();createNew();return}if(id==="g-path"||id==="g-token"||id==="g-repo"){e.preventDefault();connect();return}if(id==="g-newtoken"){e.preventDefault();newToken();return}
     if(id==="mp"){e.preventDefault();$('[data-act="vopen"]').click()}
     if(id==="mp2"){e.preventDefault();$('[data-act="vcreate"]').click()}
     if(id?.startsWith("ladd-")){e.preventDefault();$(`[data-ladd="${id.slice(5)}"]`).click()}
     if(e.target.dataset?.maddin){e.preventDefault();document.querySelector(`[data-madd="${e.target.dataset.maddin}"]`).click();return}
-    if(dlgCtx&&dlgCtx.kind!=="themes"&&e.target.tagName==="INPUT"){e.preventDefault();$(dlgCtx.kind==="vault"?'[data-act="vsave"]':'[data-act="saveitem"]').click()}}
+    if(dlgCtx&&(dlgCtx.kind==="item"||dlgCtx.kind==="vault")&&e.target.tagName==="INPUT"){e.preventDefault();$(dlgCtx.kind==="vault"?'[data-act="vsave"]':'[data-act="saveitem"]').click()}}
   if(e.key==="/"&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){e.preventDefault();$("#q").focus()}
   if(e.key==="Escape"&&document.activeElement.id==="q"&&query){query="";render()}
 });
