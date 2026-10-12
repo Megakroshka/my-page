@@ -257,6 +257,37 @@ dialog.wide{width:min(1000px,96vw)}
 .dlist button.dl:hover{border-color:var(--acc)}
 .dlist small{color:var(--soft)}
 .pchip{font-size:12px;padding:1px 8px;border-radius:999px;background:color-mix(in srgb,var(--acc2) 15%,transparent);color:var(--acc2)}
+/* задачи */
+.kanban{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:start}
+.kcol{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;min-height:200px;backdrop-filter:blur(10px)}
+.khead{display:flex;align-items:center;gap:8px;font-family:var(--hfont);font-weight:600;font-size:13px;padding:4px 4px 10px}
+.khead .cnt{color:var(--soft);font-family:"Golos Text",sans-serif;font-weight:500}
+.khead .kadd{margin-left:auto;border:1px solid var(--line);background:none;border-radius:8px;width:28px;height:28px;font-size:16px;line-height:1;color:var(--acc)}
+.khead .kadd:hover{border-color:var(--acc)}
+.kdot{width:9px;height:9px;border-radius:50%}
+.kbody{display:flex;flex-direction:column;gap:8px;min-height:120px;border-radius:10px;padding:2px;transition:background .15s}
+.kbody.over{background:color-mix(in srgb,var(--acc) 10%,transparent);outline:2px dashed color-mix(in srgb,var(--acc) 50%,transparent)}
+.kcard{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:grab;position:relative}
+.kcard:hover{border-color:color-mix(in srgb,var(--acc) 50%,transparent)}
+.kcard.dragging{opacity:.4}
+.kcard .kt{font-weight:600;word-break:break-word}
+.kcard .kn{font-size:13px;color:var(--soft);margin-top:3px;white-space:pre-wrap;word-break:break-word;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.kcard .km{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;align-items:center;font-size:12px;color:var(--soft)}
+.kcard .due.late{color:var(--danger);font-weight:600}
+.kmove{display:flex;gap:4px;margin-top:8px}
+.kmove button{border:1px solid var(--line);background:none;border-radius:6px;padding:2px 8px;font-size:12px;color:var(--soft)}
+.kmove button:hover{color:var(--acc);border-color:var(--acc)}
+.kcol[data-col="done"] .kt{text-decoration:line-through;color:var(--soft)}
+.kclear{border:0;background:none;color:var(--soft);font-size:12px;margin-top:8px;padding:0}
+.kclear:hover{color:var(--danger)}
+@media (max-width:1100px){.kanban{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:640px){.kanban{grid-template-columns:1fr}}
+/* журнал */
+.jtype{font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px}
+.jt-change{background:color-mix(in srgb,#4DA3FF 18%,transparent);color:#4DA3FF}
+.jt-fix{background:color-mix(in srgb,var(--prod) 18%,transparent);color:var(--prod)}
+.jt-release{background:color-mix(in srgb,#B57CFF 20%,transparent);color:#B57CFF}
+.jt-note{background:var(--hover);color:var(--soft)}
+.jtext{white-space:pre-wrap;word-break:break-word;margin-top:2px}
 /* стикеры */
 .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:22px 18px;padding:8px 2px 20px}
 .sticky{position:relative;min-height:180px;padding:22px 14px 12px;border-radius:2px 2px 14px 2px;color:#2B2620;
@@ -331,6 +362,8 @@ const IC = {
   pin:'<path d="M9 3h6l-1 6 4 4H6l4-4-1-6Z"/><path d="M12 13v8"/>',
   heart:'<path d="M12 21s-8-5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6-8 11-8 11Z"/>',
   kb:'<path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2Z"/><path d="M22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8Z"/>',
+  tasks:'<rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="7" rx="1"/>',
+  journal:'<path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/>',
   lists:'<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1.5"/><circle cx="4" cy="12" r="1.5"/><circle cx="4" cy="18" r="1.5"/>',
 };
 const ico=(id,s=18)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[id]}</svg>`;
@@ -339,7 +372,8 @@ const SECTIONS = [
   "sep",
   {id:"sites",title:"Сайты движков",sub:"Админки и сайты движков 4, 3 и 2.",engines:["4","3","2"],env:"opt",status:true,groupBy:"engine"},
   {id:"projects",title:"Проекты",sub:"Проекты движков 4 и 3: прод и тест, какие ASR, TTS и LLM подключены.",engines:["4","3"],env:true,stack:true,groupBy:"projenv"},
-  {id:"scripts",title:"Скрипты",sub:"Скрипты и ссылки на них.",engines:["","4","3","2"],env:"opt",groupBy:"engine"},
+  {id:"tasks",title:"Задачи",sub:"Что сделать по проектам. Перетаскивай карточки между колонками."},
+  {id:"journal",title:"Журнал изменений",sub:"Что, когда и в каком проекте поменяла. Чтобы потом не гадать, после чего всё сломалось."},
   {id:"sheets",title:"Google-таблицы",sub:"Таблицы движков и общие.",engines:["","4","3","2"],env:"opt",groupBy:"engine"},
   "sep",
   {id:"notes",title:"Заметки",sub:"Быстрые записки для себя. Пиши прямо на стикере."},
@@ -350,6 +384,7 @@ const SECTIONS = [
   {id:"refs",title:"Справочники",sub:"Справочная информация."},
   {id:"games",title:"Игры",sub:"Для себя."},
   {id:"kb",title:"База знаний",sub:"Промпты и большие тексты. Хранятся версии, можно привязать к проектам."},
+  {id:"scripts",title:"Скрипты (архив)",sub:"Старый раздел. Показывается, пока здесь есть записи.",engines:["","4","3","2"],env:"opt",groupBy:"engine",hideEmpty:true},
   "sep",
   {id:"vault",title:"Пароли",sub:"Зашифрованы мастер-паролем. Без него их не прочитать, даже открыв файл."},
   {id:"lists",title:"Списки ASR / TTS / LLM",sub:"Варианты, которые выбираются в проектах."},
@@ -382,7 +417,7 @@ function autoName(u){try{const x=new URL(safeUrl(u));if(x.hostname.includes("doc
 const arr=v=>Array.isArray(v)?v.filter(Boolean):(v?[v]:[]);
 function normalize(s){s=s&&typeof s==="object"?s:{};
   const items=(Array.isArray(s.items)?s.items:[]).map(i=>i.sec==="projects"?{...i,asr:arr(i.asr),tts:arr(i.tts),llm:arr(i.llm)}:i);
-  return {v:2,at:s.at||0,theme:s.theme||"neon",items,notes:Array.isArray(s.notes)?s.notes:[],docs:Array.isArray(s.docs)?s.docs.map(d=>({...d,projects:arr(d.projects),history:Array.isArray(d.history)?d.history:[]})):[],lists:{asr:s.lists?.asr||[],tts:s.lists?.tts||[],llm:s.lists?.llm||[]},vault:s.vault||null}}
+  return {v:2,at:s.at||0,theme:s.theme||"neon",items,notes:Array.isArray(s.notes)?s.notes:[],tasks:Array.isArray(s.tasks)?s.tasks:[],journal:Array.isArray(s.journal)?s.journal:[],docs:Array.isArray(s.docs)?s.docs.map(d=>({...d,projects:arr(d.projects),history:Array.isArray(d.history)?d.history:[]})):[],lists:{asr:s.lists?.asr||[],tts:s.lists?.tts||[],llm:s.lists?.llm||[]},vault:s.vault||null}}
 function applyTheme(){if(!state)return;document.documentElement.dataset.theme=state.theme||"neon";try{localStorage.setItem("spravochnik-theme",state.theme)}catch{}}
 
 /* ---------- GitHub ---------- */
@@ -462,7 +497,7 @@ const CODE_LINES=[
 ];
 function eyeAnim(){
   const lines=CODE_LINES.map(l=>`<div>${l}</div>`).join("");
-  return `<div class="eyebox"><img class="logingif" src="login.gif" alt="" onload="this.closest('.eyebox').classList.add('hasgif')"><div class="eyewrap"><svg class="eye" viewBox="0 0 200 116" aria-hidden="true">
+  return `<div class="eyebox"><img class="logingif" src="lockin.gif" alt="" onload="this.closest('.eyebox').classList.add('hasgif')"><div class="eyewrap"><svg class="eye" viewBox="0 0 200 116" aria-hidden="true">
   <defs><radialGradient id="iris" cx=".5" cy=".4" r=".62"><stop offset="0" stop-color="#FFC2E6"/><stop offset=".42" stop-color="#FF5CA8"/><stop offset=".78" stop-color="#8B3DFF"/><stop offset="1" stop-color="#2A0F55"/></radialGradient>
   <clipPath id="eyeclip"><path d="M30 64Q100 8 170 64Q100 106 30 64Z"/></clipPath></defs>
   <g class="blink">
@@ -607,7 +642,7 @@ const I={
   search:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
   user:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
 };
-const ACC={kb:"#B57CFF",fav:"#FFB020",notes:"#FFC93D",sites:"#2EF2FF",projects:"#9D6BFF",scripts:"#3DFF8E",sheets:"#34D399",asr:"#FF7AB6",tts:"#FFB86B",learn:"#7AA2FF",apps:"#5EEAD4",refs:"#C4B5FD",games:"#FF6B9A",vault:"#FFC43D",lists:"#2EF2FF"};
+const ACC={tasks:"#4DA3FF",journal:"#FF9F43",kb:"#B57CFF",fav:"#FFB020",notes:"#FFC93D",sites:"#2EF2FF",projects:"#9D6BFF",scripts:"#3DFF8E",sheets:"#34D399",asr:"#FF7AB6",tts:"#FFB86B",learn:"#7AA2FF",apps:"#5EEAD4",refs:"#C4B5FD",games:"#FF6B9A",vault:"#FFC43D",lists:"#2EF2FF"};
 function skyline(id){
   let seed=[...id].reduce((a,c)=>a*31+c.charCodeAt(0),7)>>>0;const rnd=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
   const a=ACC[id];let back="",front="",win="";
@@ -625,10 +660,11 @@ function skyline(id){
 }
 
 /* ---------- отрисовка ---------- */
-function count(id){if(id==="vault")return vaultItems?vaultItems.length:"";if(id==="kb")return state.docs.length||"";if(id==="fav")return state.items.filter(i=>i.starred).length||"";if(id==="notes")return state.notes.length||"";if(id==="lists")return state.lists.asr.length+state.lists.tts.length+state.lists.llm.length||"";return state.items.filter(i=>i.sec===id).length||""}
+function count(id){if(id==="vault")return vaultItems?vaultItems.length:"";if(id==="tasks")return state.tasks.filter(t=>t.col!=="done").length||"";if(id==="journal")return state.journal.length||"";if(id==="kb")return state.docs.length||"";if(id==="fav")return state.items.filter(i=>i.starred).length||"";if(id==="notes")return state.notes.length||"";if(id==="lists")return state.lists.asr.length+state.lists.tts.length+state.lists.llm.length||"";return state.items.filter(i=>i.sec===id).length||""}
 function renderNav(){
   let h=`<div class="brand">${HEART_SVG.replace('id="hg"','id="hg2"').replace("url(#hg)","url(#hg2)")}Coding girl</div>`;
   for(const s of SECTIONS){if(s==="sep"){h+='<div class="navsep"></div>';continue}
+    if(s.hideEmpty&&!state.items.some(i=>i.sec===s.id))continue;
     h+=`<button class="navbtn ${cur===s.id&&!query?"on":""}" data-go="${s.id}">${ico(s.id)}<span>${esc(s.title)}</span><small>${count(s.id)}</small></button>`}
   h+=`<div class="navfoot"><button data-act="themes">Сменить тему</button><button data-act="import">Импорт из копии</button><button data-act="glock">Заблокировать</button><button data-act="gconn">Подключение GitHub</button><button data-act="exportjson">Скачать копию .json</button></div>`;
   $("#nav").innerHTML=h;
@@ -653,13 +689,20 @@ function topBar(){
   ${canAdd?`<button class="btn add" data-act="add">+ Добавить</button>`:""}<button class="btn icon" data-act="themes" title="Сменить тему">${ico("palette",18)}</button><button class="btn save ${dirty?"":"clean"}" id="saveBtn" data-act="save">Сохранить<span class="dot"></span></button></div>
   <div class="savehint ${dirty?"dirty":""}" id="savehint"></div>`;
 }
-let hasGif=false;{const gi=new Image();gi.onload=()=>{hasGif=true;if(state&&!document.body.classList.contains("gated"))render()};gi.src="login.gif"}
-const hero=(id,title,sub)=>`<div class="hero" style="--a:${ACC[id]}"><div class="scene">${skyline(id)}</div>${hasGif?'<img class="herogif" src="login.gif" alt="">':""}<div class="hero-in"><div class="htile">${ico(id,26)}</div><div><h1>${esc(title)}</h1><p class="sub">${esc(sub)}</p></div></div></div>`;
+const GIFNUM={fav:1,sites:2,projects:3,tasks:4,sheets:5,notes:6,asr:7,tts:8,learn:9,apps:10,refs:11,games:12,kb:13,vault:14,lists:15,journal:16};
+const gifOk={};
+function probeGif(src){if(src in gifOk)return;gifOk[src]=null;const im=new Image();im.onload=()=>{gifOk[src]=true;if(state&&!document.body.classList.contains("gated"))render()};im.onerror=()=>{gifOk[src]=false;if(state&&!document.body.classList.contains("gated"))render()};im.src=src}
+function heroGif(id){
+  const own=GIFNUM[id]?`gifka${GIFNUM[id]}.gif`:null;
+  if(own){probeGif(own);if(gifOk[own])return own;if(gifOk[own]===null)return null}
+  probeGif("login.gif");return gifOk["login.gif"]?"login.gif":null;
+}
+const hero=(id,title,sub)=>`<div class="hero" style="--a:${ACC[id]}"><div class="scene">${skyline(id)}</div>${(g=>g?`<img class="herogif" src="${g}" alt="">`:"")(heroGif(id))}<div class="hero-in"><div class="htile">${ico(id,26)}</div><div><h1>${esc(title)}</h1><p class="sub">${esc(sub)}</p></div></div></div>`;
 function render(){
   renderNav();
   const m=$("#main"),focused=document.activeElement?.id==="q",pos=focused?$("#q").selectionStart:0;
   let body;
-  if(query)body=renderSearch();else if(cur==="vault")body=renderVault();else if(cur==="lists")body=renderLists();else if(cur==="notes")body=renderNotes();else if(cur==="fav")body=renderFav();else if(cur==="kb")body=renderKb();else body=renderSection(SEC[cur]);
+  if(query)body=renderSearch();else if(cur==="vault")body=renderVault();else if(cur==="lists")body=renderLists();else if(cur==="notes")body=renderNotes();else if(cur==="fav")body=renderFav();else if(cur==="kb")body=renderKb();else if(cur==="tasks")body=renderTasks();else if(cur==="journal")body=renderJournal();else body=renderSection(SEC[cur]);
   m.innerHTML=topBar()+body+`<div class="mobilefoot"><button class="btn" data-act="import">Импорт из копии</button><button class="btn" data-act="exportjson">Скачать копию .json</button></div>`;
   updateSaveUI();
   if(focused){const q=$("#q");q.focus();q.setSelectionRange(pos,pos)}
@@ -696,14 +739,18 @@ function renderSearch(){
   const hit=state.items.filter(i=>[i.name,i.url,i.note,arr(i.asr).join(" "),arr(i.tts).join(" "),arr(i.llm).join(" ")].some(v=>(v||"").toLowerCase().includes(q)));
   hit.sort(pinFirst);
   const nh=state.notes.filter(n=>(n.text||"").toLowerCase().includes(q));
+  const th=state.tasks.filter(t=>(t.title+" "+(t.note||"")).toLowerCase().includes(q));
+  const jh=state.journal.filter(j=>(j.text||"").toLowerCase().includes(q));
   const dh=state.docs.filter(d=>(d.title+" "+d.text).toLowerCase().includes(q)).sort(docSort);
   const vh=vaultItems?vaultItems.filter(v=>[v.where,v.login,v.note,v.url].some(x=>(x||"").toLowerCase().includes(q))):[];
-  let h=`<div class="hero plain"><div class="hero-in"><div><h1>Поиск</h1><p class="sub">Найдено: ${hit.length+vh.length+nh.length+dh.length}${state.vault&&!vaultItems?". Пароли закрыты, в поиск они не попадают":""}</p></div></div></div>`;
+  let h=`<div class="hero plain"><div class="hero-in"><div><h1>Поиск</h1><p class="sub">Найдено: ${hit.length+vh.length+nh.length+dh.length+th.length+jh.length}${state.vault&&!vaultItems?". Пароли закрыты, в поиск они не попадают":""}</p></div></div></div>`;
   if(hit.length)h+=`<div class="list">${hit.map(i=>rowHtml(i,true)).join("")}</div>`;
   if(vh.length)h+=`<div class="group">Пароли<span class="cnt">${vh.length}</span></div><div class="list">${vh.map(vaultRow).join("")}</div>`;
+  if(th.length)h+=`<div class="group">Задачи<span class="cnt">${th.length}</span></div><div class="board" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">${th.map(taskCard).join("")}</div>`;
+  if(jh.length)h+=`<div class="group">Журнал<span class="cnt">${jh.length}</span></div><div class="list">${jh.map(jRow).join("")}</div>`;
   if(dh.length)h+=`<div class="group">База знаний<span class="cnt">${dh.length}</span></div><div class="list">${dh.map(docRow).join("")}</div>`;
   if(nh.length)h+=`<div class="group">Заметки<span class="cnt">${nh.length}</span></div><div class="board">${nh.map(stickyHtml).join("")}</div>`;
-  if(!hit.length&&!vh.length&&!nh.length&&!dh.length)h+=`<div class="empty-state">Ничего не нашлось. Попробуй часть названия или адреса.</div>`;
+  if(!hit.length&&!vh.length&&!nh.length&&!dh.length&&!th.length&&!jh.length)h+=`<div class="empty-state">Ничего не нашлось. Попробуй часть названия или адреса.</div>`;
   return h;
 }
 function vaultRow(v){
@@ -828,6 +875,94 @@ function openProjDocs(pid){
   <div class="dlgfoot"><div class="r"><button class="btn" data-act="close">Закрыть</button><button class="btn primary" data-pnew="${pid}">+ Новый документ</button></div></div>`,{kind:"pdocs",pid});
 }
 
+/* ---------- задачи ---------- */
+const COLS=[{id:"todo",title:"Надо",color:"#FF9F43"},{id:"doing",title:"В работе",color:"#4DA3FF"},{id:"testing",title:"На тесте",color:"#B57CFF"},{id:"done",title:"Готово",color:"#3DDC84"}];
+let taskProj="all",jProj="all",jType="all",dragId=null;
+const todayStr=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
+const projById=id=>state.items.find(i=>i.id===id&&i.sec==="projects");
+function projChips(cur,attr,list){
+  const used=projects().filter(p=>list.some(x=>x.project===p.id));
+  if(!used.length)return "";
+  return `<div class="filters"><button class="chip ${cur==="all"?"on":""}" data-${attr}="all">Все проекты</button>${used.map(p=>`<button class="chip ${cur===p.id?"on":""}" data-${attr}="${p.id}">${esc(p.name)}</button>`).join("")}</div>`;
+}
+function taskCard(t){
+  const p=projById(t.project),late=t.due&&t.col!=="done"&&t.due<todayStr();
+  const ci=COLS.findIndex(c=>c.id===t.col);
+  return `<div class="kcard" draggable="true" data-tid="${t.id}"><div class="kt">${esc(t.title)}</div>${t.note?`<div class="kn">${esc(t.note)}</div>`:""}
+  ${p||t.due?`<div class="km">${p?`<span class="pchip">${esc(projLabel(p))}</span>`:""}${t.due?`<span class="due ${late?"late":""}">до ${new Date(t.due+"T00:00").toLocaleDateString("ru-RU",{day:"numeric",month:"short"})}</span>`:""}</div>`:""}
+  <div class="kmove">${ci>0?`<button data-tmove="${t.id}:-1" title="Назад">← ${COLS[ci-1].title}</button>`:""}${ci<COLS.length-1?`<button data-tmove="${t.id}:1" title="Дальше">${COLS[ci+1].title} →</button>`:""}</div></div>`;
+}
+function renderTasks(){
+  const s=SEC.tasks;let h=hero("tasks",s.title,s.sub)+projChips(taskProj,"tproj",state.tasks);
+  let list=state.tasks;if(taskProj!=="all")list=list.filter(t=>t.project===taskProj);
+  h+=`<div class="kanban">${COLS.map(c=>{const cs=list.filter(t=>t.col===c.id);
+    return `<div class="kcol" data-col="${c.id}"><div class="khead"><span class="kdot" style="background:${c.color}"></span>${c.title}<span class="cnt">${cs.length}</span><button class="kadd" data-tadd="${c.id}" title="Добавить">+</button></div>
+    <div class="kbody" data-drop="${c.id}">${cs.map(taskCard).join("")}</div>${c.id==="done"&&cs.length?`<button class="kclear" data-act="tclear">Удалить готовые</button>`:""}</div>`}).join("")}</div>`;
+  return h;
+}
+function projSelect(idAttr,val){return `<select id="${idAttr}"><option value="">Без проекта</option>${projects().map(p=>`<option value="${p.id}" ${p.id===val?"selected":""}>${esc(projLabel(p))}</option>`).join("")}</select>`}
+function openTask(t,col){
+  const isNew=!t;t=t||{col:col||"todo",project:taskProj!=="all"?taskProj:""};
+  showDlg(`<h2>${isNew?"Новая задача":"Задача"}</h2>
+  <label class="f">Что сделать<input id="t-title" value="${esc(t.title||"")}" placeholder="Например: обновить промпт на тесте"></label>
+  <div class="frow"><label class="f">Проект${projSelect("t-proj",t.project)}</label><label class="f">Срок<input id="t-due" type="date" value="${esc(t.due||"")}"></label></div>
+  <label class="f">Колонка<div class="seg" data-seg="col">${COLS.map(c=>`<button type="button" data-v="${c.id}" class="${t.col===c.id?"on":""}">${c.title}</button>`).join("")}</div></label>
+  <label class="f">Подробности<textarea id="t-note">${esc(t.note||"")}</textarea></label>
+  <div class="dlgfoot">${isNew?"":`<button class="btn danger" data-act="tdel">Удалить</button>`}<div class="r"><button class="btn" data-act="close">Отмена</button><button class="btn primary" data-act="tsave">Готово</button></div></div>`,{kind:"task",t,isNew});
+}
+function saveTask(){
+  const c=dlgCtx,title=$("#t-title").value.trim();if(!title){toast("Напиши, что сделать");return}
+  const n={...c.t,title,project:$("#t-proj").value,due:$("#t-due").value,col:$('[data-seg="col"] .on')?.dataset.v||"todo",note:$("#t-note").value.trim(),at:Date.now()};
+  if(c.isNew){n.id=uid();state.tasks.push(n)}else state.tasks[state.tasks.findIndex(x=>x.id===n.id)]=n;
+  change();closeDlg();render();
+}
+function moveTask(id,col,beforeId){
+  const i=state.tasks.findIndex(t=>t.id===id);if(i<0)return;const t=state.tasks.splice(i,1)[0];t.col=col;t.at=Date.now();
+  const j=beforeId?state.tasks.findIndex(x=>x.id===beforeId):-1;
+  if(j>=0)state.tasks.splice(j,0,t);else state.tasks.push(t);
+  change();render();
+}
+document.addEventListener("dragstart",e=>{const c=e.target.closest?.(".kcard");if(!c)return;dragId=c.dataset.tid;c.classList.add("dragging");e.dataTransfer.effectAllowed="move";try{e.dataTransfer.setData("text/plain",dragId)}catch{}});
+document.addEventListener("dragend",e=>{document.querySelectorAll(".dragging,.over").forEach(x=>x.classList.remove("dragging","over"));dragId=null});
+document.addEventListener("dragover",e=>{const b=e.target.closest?.(".kbody");if(!b||!dragId)return;e.preventDefault();document.querySelectorAll(".kbody.over").forEach(x=>x!==b&&x.classList.remove("over"));b.classList.add("over")});
+document.addEventListener("drop",e=>{const b=e.target.closest?.(".kbody");if(!b||!dragId)return;e.preventDefault();const over=e.target.closest(".kcard");moveTask(dragId,b.dataset.drop,over&&over.dataset.tid!==dragId?over.dataset.tid:null)});
+
+/* ---------- журнал ---------- */
+const JTYPES=[["change","Изменение"],["fix","Исправление"],["release","Выкатка"],["note","Заметка"]];
+const jLabel=t=>(JTYPES.find(x=>x[0]===t)||JTYPES[0])[1];
+function jRow(j){
+  const p=projById(j.project);
+  return `<div class="row"><div class="tag t0">${ico("journal",16)}</div><div style="min-width:0"><div class="jtext">${esc(j.text)}</div>
+  <div class="meta"><span class="jtype jt-${j.type||"change"}">${jLabel(j.type)}</span>${p?`<span class="pchip">${esc(projLabel(p))}</span>`:""}</div></div>
+  <div class="acts"><button class="ib" title="Скопировать" data-copy="${esc(j.text)}">${I.copy}</button><button class="ib" title="Изменить" data-jedit="${j.id}">${I.edit}</button></div></div>`;
+}
+function renderJournal(){
+  const s=SEC.journal;let h=hero("journal",s.title,s.sub)+projChips(jProj,"jproj",state.journal);
+  h+=`<div class="filters"><button class="chip ${jType==="all"?"on":""}" data-jtype="all">Все типы</button>${JTYPES.map(([v,l])=>`<button class="chip ${jType===v?"on":""}" data-jtype="${v}">${l}</button>`).join("")}</div>`;
+  let list=[...state.journal];if(jProj!=="all")list=list.filter(j=>j.project===jProj);if(jType!=="all")list=list.filter(j=>(j.type||"change")===jType);
+  if(!list.length)return h+emptyBox("Записей пока нет.","+ Новая запись");
+  list.sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.at||0)-(a.at||0));
+  const days=[...new Set(list.map(j=>j.date))];
+  for(const d of days){const ds=list.filter(j=>j.date===d);
+    h+=`<div class="group">${d?new Date(d+"T00:00").toLocaleDateString("ru-RU",{weekday:"short",day:"numeric",month:"long",year:"numeric"}):"Без даты"}<span class="cnt">${ds.length}</span></div><div class="list">${ds.map(jRow).join("")}</div>`}
+  return h;
+}
+function openJournal(j){
+  const isNew=!j;j=j||{date:todayStr(),type:"change",project:jProj!=="all"?jProj:""};
+  showDlg(`<h2>${isNew?"Новая запись":"Запись"}</h2>
+  <div class="frow"><label class="f">Дата<input id="j-date" type="date" value="${esc(j.date||"")}"></label><label class="f">Проект${projSelect("j-proj",j.project)}</label></div>
+  <label class="f">Тип<div class="seg" data-seg="jtype">${JTYPES.map(([v,l])=>`<button type="button" data-v="${v}" class="${(j.type||"change")===v?"on":""}">${l}</button>`).join("")}</div></label>
+  <label class="f">Что сделала<textarea id="j-text" style="min-height:110px" placeholder="Например: сменила TTS на Захар, подняла температуру LLM до 0.7">${esc(j.text||"")}</textarea></label>
+  <div class="dlgfoot">${isNew?"":`<button class="btn danger" data-act="jdel">Удалить</button>`}<div class="r"><button class="btn" data-act="close">Отмена</button><button class="btn primary" data-act="jsave">Готово</button></div></div>`,{kind:"journal",j,isNew});
+  setTimeout(()=>$("#j-text")?.focus(),40);
+}
+function saveJournal(){
+  const c=dlgCtx,text=$("#j-text").value.trim();if(!text){toast("Напиши, что поменялось");return}
+  const n={...c.j,text,date:$("#j-date").value,project:$("#j-proj").value,type:$('[data-seg="jtype"] .on')?.dataset.v||"change",at:Date.now()};
+  if(c.isNew){n.id=uid();state.journal.push(n)}else state.journal[state.journal.findIndex(x=>x.id===n.id)]=n;
+  change();closeDlg();render();
+}
+
 /* ---------- формы ---------- */
 function multiStack(k,vals){vals=arr(vals);const all=[...new Set([...state.lists[k],...vals])];
   return `<div class="multi" data-multi="${k}"><div class="mh"><b>${k.toUpperCase()}</b><span>можно несколько</span></div><div class="mopts">${all.length?all.map(o=>`<button type="button" class="mopt ${vals.includes(o)?"on":""}" data-mv="${esc(o)}">${esc(o)}</button>`).join(""):'<span style="font-size:13px;color:var(--soft)">Список пуст, добавь первый вариант</span>'}</div>
@@ -864,12 +999,19 @@ function closeDlg(){$("#dlg").close();dlgCtx=null}
 /* ---------- события ---------- */
 async function copy(t){try{await navigator.clipboard.writeText(t);toast("Скопировано")}catch{const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy");toast("Скопировано")}catch{toast("Не получилось скопировать")}a.remove()}}
 document.addEventListener("click",async e=>{
+  if(!e.target.closest("button")){const kc=e.target.closest(".kcard");if(kc){openTask(state.tasks.find(x=>x.id===kc.dataset.tid));return}}
   const t=e.target.closest("button");if(!t)return;const d=t.dataset;
-  if(d.go){cur=d.go;query="";engFilter="all";envFilter="all";render();scrollTo(0,0);return}
+  if(d.go){cur=d.go;query="";engFilter="all";envFilter="all";taskProj="all";jProj="all";jType="all";render();scrollTo(0,0);return}
   if(d.eng){engFilter=d.eng;render();return}
   if(d.gen){genFilter=d.gen;render();return}
   if(d.envf){envFilter=d.envf;render();return}
   if(d.kbf){kbFilter=d.kbf;render();return}
+  if(d.tproj){taskProj=d.tproj;render();return}
+  if(d.jproj){jProj=d.jproj;render();return}
+  if(d.jtype){jType=d.jtype;render();return}
+  if(d.tadd){openTask(null,d.tadd);return}
+  if(d.tmove){const[id,dir]=d.tmove.split(":");const t=state.tasks.find(x=>x.id===id);if(t){const ci=COLS.findIndex(c=>c.id===t.col)+(+dir);if(COLS[ci])moveTask(id,COLS[ci].id,null)}return}
+  if(d.jedit){openJournal(state.journal.find(x=>x.id===d.jedit));return}
   if(d.dopen){openDoc(state.docs.find(x=>x.id===d.dopen));return}
   if(d.dcopy){copy(state.docs.find(x=>x.id===d.dcopy)?.text||"");return}
   if(d.dpin){const x=state.docs.find(y=>y.id===d.dpin);if(x){x.pinned=!x.pinned;change();render()}return}
@@ -912,7 +1054,12 @@ document.addEventListener("click",async e=>{
     case "takeremote":closeDlg();dirty=false;try{localStorage.removeItem(DRAFT_KEY)}catch{}(async()=>{try{remoteBlob=await fetchRemote();state=await decryptBlob(remoteBlob,dataKey);vaultKey=null;vaultItems=null;render();toast("Загружена свежая версия")}catch(e){toast("Не получилось: "+e.message)}})();break;
     case "themes":openThemes();break;
     case "newnote":{const n={id:uid(),text:"",color:NOTE_COLORS[state.notes.length%NOTE_COLORS.length],at:Date.now()};state.notes.push(n);change();render();setTimeout(()=>document.querySelector(`[data-note="${n.id}"]`)?.focus(),0);break}
-    case "add":cur==="vault"?openVaultItem():cur==="kb"?openDoc():openItem();break;
+    case "add":cur==="vault"?openVaultItem():cur==="kb"?openDoc():cur==="tasks"?openTask(null,"todo"):cur==="journal"?openJournal():openItem();break;
+    case "tsave":saveTask();break;
+    case "tdel":if(confirm("Удалить задачу?")){state.tasks=state.tasks.filter(x=>x.id!==dlgCtx.t.id);change();closeDlg();render()}break;
+    case "tclear":{const n=state.tasks.filter(t=>t.col==="done"&&(taskProj==="all"||t.project===taskProj)).length;if(confirm(`Удалить готовые задачи (${n})?`)){state.tasks=state.tasks.filter(t=>!(t.col==="done"&&(taskProj==="all"||t.project===taskProj)));change();render()}break}
+    case "jsave":saveJournal();break;
+    case "jdel":if(confirm("Удалить запись?")){state.journal=state.journal.filter(x=>x.id!==dlgCtx.j.id);change();closeDlg();render()}break;
     case "dsave":saveDoc();break;
     case "ddel":if(confirm("Удалить документ со всеми версиями?")){state.docs=state.docs.filter(x=>x.id!==dlgCtx.doc.id);change();closeDlg();render()}break;
     case "dcopytxt":copy($("#d-text").value);break;
@@ -927,7 +1074,7 @@ document.addEventListener("click",async e=>{
       if(s.stack){n.gender=sv("gender")||"";for(const k of ["asr","tts","llm"])n[k]=[...document.querySelectorAll(`[data-multi="${k}"] .mopt.on`)].map(b=>b.dataset.mv)}
       if(isNew){n.id=uid();state.items.push(n)}else state.items[state.items.findIndex(i=>i.id===it.id)]=n;
       change();closeDlg();render();break}
-    case "del":if(confirm("Удалить запись?")){const delId=dlgCtx.it.id;state.docs.forEach(x=>x.projects=x.projects.filter(p=>p!==delId));state.items=state.items.filter(i=>i.id!==delId);change();closeDlg();render()}break;
+    case "del":if(confirm("Удалить запись?")){const delId=dlgCtx.it.id;state.docs.forEach(x=>x.projects=x.projects.filter(p=>p!==delId));state.tasks.forEach(x=>{if(x.project===delId)x.project=""});state.journal.forEach(x=>{if(x.project===delId)x.project=""});state.items=state.items.filter(i=>i.id!==delId);change();closeDlg();render()}break;
     case "vcreate":{const a=$("#mp1").value,b=$("#mp2").value;if(a.length<4){toast("Минимум 4 символа");return}if(a!==b){toast("Пароли не совпадают");return}await createVault(a);render();toast("Хранилище создано. Не забудь нажать «Сохранить»");break}
     case "vopen":try{await openVault($("#mp").value);render()}catch{toast("Неверный мастер-пароль")}break;
     case "vlock":vaultKey=null;vaultItems=null;shown.clear();render();break;
@@ -956,6 +1103,7 @@ document.addEventListener("keydown",e=>{
     if(id==="mp2"){e.preventDefault();$('[data-act="vcreate"]').click()}
     if(id?.startsWith("ladd-")){e.preventDefault();$(`[data-ladd="${id.slice(5)}"]`).click()}
     if(e.target.dataset?.maddin){e.preventDefault();document.querySelector(`[data-madd="${e.target.dataset.maddin}"]`).click();return}
+    if(dlgCtx?.kind==="task"&&e.target.id==="t-title"){e.preventDefault();saveTask();return}
     if(dlgCtx&&(dlgCtx.kind==="item"||dlgCtx.kind==="vault")&&e.target.tagName==="INPUT"){e.preventDefault();$(dlgCtx.kind==="vault"?'[data-act="vsave"]':'[data-act="saveitem"]').click()}}
   if(e.key==="/"&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){e.preventDefault();$("#q").focus()}
   if(e.key==="Escape"&&document.activeElement.id==="q"&&query){query="";render()}
