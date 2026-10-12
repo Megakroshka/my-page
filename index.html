@@ -577,6 +577,7 @@ async function finishUnlock(key){
     try{remoteBlob=await fetchRemote()}catch(e){if(/Токен/.test(e.message)){pendingKey=key;return showNewToken()}$("#gerr").textContent=e.message;return}
     if(!remoteBlob){$("#gerr").textContent="Файл с данными не найден в репозитории";return}
   }
+  if(key&&cfg.salt&&cfg.salt!==remoteBlob.salt){pendingKey=key;return showNewPass()}
   let k=key&&cfg.salt===remoteBlob.salt?key:await deriveKey(lastPass,ub64(remoteBlob.salt));
   try{state=await decryptBlob(remoteBlob,k)}catch{failCount++;$("#gerr").textContent="Неверный мастер-пароль";extraReset();return}
   dataKey=k;dataSalt=remoteBlob.salt;
@@ -587,11 +588,60 @@ async function finishUnlock(key){
   lastPass=null;enterApp();
 }
 let lastPass=null;
+function showNewPass(){
+  gate(`${eyeAnim()}${gateTitle("Пароль изменён")}<p>Мастер-пароль поменяли на другом устройстве. Введи новый пароль, и это устройство его запомнит.</p>
+  <div class="f"><input id="mnew" type="password" placeholder="Новый мастер-пароль" autocomplete="current-password"></div>
+  <button class="btn primary" data-act="gnewpass">Открыть</button><div class="err" id="gerr"></div>`);
+}
+async function unlockNewPass(){
+  const p=$("#mnew").value;if(!p)return;$("#gerr").textContent="Открываю…";
+  const k=await deriveKey(p,ub64(remoteBlob.salt));
+  try{state=await decryptBlob(remoteBlob,k)}catch{$("#gerr").textContent="Неверный пароль";return}
+  dataKey=k;dataSalt=remoteBlob.salt;try{localStorage.removeItem(DRAFT_KEY)}catch{}
+  await storeCfg();lastPass=null;enterApp();toast("Готово, новый пароль сохранён на этом устройстве");
+}
+function openChangePass(){
+  showDlg(`<h2>Сменить мастер-пароль</h2>
+  <p style="font-size:14px;color:var(--soft);margin:0 0 14px">Это пароль от входа. Им зашифрован весь справочник.</p>
+  <label class="f">Текущий пароль<input id="cp-old" type="password" autocomplete="current-password"></label>
+  <label class="f">Новый пароль<input id="cp-new" type="password" autocomplete="new-password"></label>
+  <label class="f">Новый пароль ещё раз<input id="cp-new2" type="password" autocomplete="new-password"></label>
+  <p style="font-size:13px;color:var(--soft);margin:0 0 12px">На других устройствах при следующем входе один раз введи <b>старый</b> пароль, справочник сам попросит новый.</p>
+  <div class="dlgfoot"><div class="r"><button class="btn" data-act="close">Отмена</button><button class="btn primary" data-act="cpsave">Сменить</button></div></div>`,{kind:"cp"});
+}
+async function changePass(){
+  const o=$("#cp-old").value,n=$("#cp-new").value,n2=$("#cp-new2").value;
+  if(n.length<6){toast("Новый пароль: минимум 6 символов");return}
+  if(n!==n2){toast("Новые пароли не совпадают");return}
+  if(n===o){toast("Новый пароль совпадает со старым");return}
+  try{const k=await deriveKey(o,ub64(dataSalt));const probe=await encryptState();await decryptBlob(probe,k)}catch{toast("Текущий пароль неверный");return}
+  const btn=document.querySelector('[data-act="cpsave"]');btn.disabled=true;btn.textContent="Меняю…";
+  const oldKey=dataKey,oldSalt=dataSalt,salt=crypto.getRandomValues(new Uint8Array(16));
+  dataKey=await deriveKey(n,salt);dataSalt=b64(salt);
+  closeDlg();dirty=true;await saveFile();
+  if(dirty){dataKey=oldKey;dataSalt=oldSalt;toast("Пароль не сменился: не получилось сохранить на GitHub. Попробуй ещё раз");return}
+  await storeCfg();try{localStorage.removeItem(DRAFT_KEY)}catch{}
+  toast("Мастер-пароль изменён");
+}
+function openVaultPass(){
+  showDlg(`<h2>Сменить пароль раздела «Пароли»</h2>
+  <label class="f">Текущий пароль раздела<input id="vp-old" type="password" autocomplete="off"></label>
+  <label class="f">Новый пароль<input id="vp-new" type="password" autocomplete="off"></label>
+  <label class="f">Новый пароль ещё раз<input id="vp-new2" type="password" autocomplete="off"></label>
+  <div class="dlgfoot"><div class="r"><button class="btn" data-act="close">Отмена</button><button class="btn primary" data-act="vpsave">Сменить</button></div></div>`,{kind:"vp"});
+}
+async function changeVaultPass(){
+  const o=$("#vp-old").value,n=$("#vp-new").value,n2=$("#vp-new2").value;
+  if(n.length<4){toast("Минимум 4 символа");return}if(n!==n2){toast("Новые пароли не совпадают");return}
+  try{const k=await deriveKey(o,ub64(state.vault.salt));await crypto.subtle.decrypt({name:"AES-GCM",iv:ub64(state.vault.iv)},k,ub64(state.vault.ct))}catch{toast("Текущий пароль неверный");return}
+  const salt=crypto.getRandomValues(new Uint8Array(16));vaultKey=await deriveKey(n,salt);state.vault.salt=b64(salt);await sealVault();
+  closeDlg();toast("Пароль раздела изменён. Нажми «Сохранить»");
+}
 function extraReset(){if(failCount>=2&&$("#gextra"))$("#gextra").innerHTML='<button class="lnk" data-act="greset">Сбросить подключение на этом устройстве</button>'}
 async function unlock(){
   const p=$("#m").value;if(!p)return;$("#gerr").textContent="Открываю…";lastPass=p;
   if(cfg.tok){
-    let key;try{key=await deriveKey(p,ub64(cfg.salt));TOKEN=await decStr(cfg.tok,key)}catch{failCount++;$("#gerr").textContent="Неверный мастер-пароль";extraReset();return}
+    let key;try{key=await deriveKey(p,ub64(cfg.salt));TOKEN=await decStr(cfg.tok,key)}catch{failCount++;$("#gerr").textContent="Неверный мастер-пароль. Если меняла пароль на другом устройстве, здесь один раз введи старый";extraReset();return}
     remoteBlob=null;return finishUnlock(key);
   }
   return finishUnlock(null);
@@ -666,7 +716,7 @@ function renderNav(){
   for(const s of SECTIONS){if(s==="sep"){h+='<div class="navsep"></div>';continue}
     if(s.hideEmpty&&!state.items.some(i=>i.sec===s.id))continue;
     h+=`<button class="navbtn ${cur===s.id&&!query?"on":""}" data-go="${s.id}">${ico(s.id)}<span>${esc(s.title)}</span><small>${count(s.id)}</small></button>`}
-  h+=`<div class="navfoot"><button data-act="themes">Сменить тему</button><button data-act="import">Импорт из копии</button><button data-act="glock">Заблокировать</button><button data-act="gconn">Подключение GitHub</button><button data-act="exportjson">Скачать копию .json</button></div>`;
+  h+=`<div class="navfoot"><button data-act="themes">Сменить тему</button><button data-act="import">Импорт из копии</button><button data-act="cpopen">Сменить мастер-пароль</button><button data-act="glock">Заблокировать</button><button data-act="gconn">Подключение GitHub</button><button data-act="exportjson">Скачать копию .json</button></div>`;
   $("#nav").innerHTML=h;
 }
 const pinFirst=(a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(a.name||"").localeCompare(b.name||"","ru");
@@ -767,7 +817,7 @@ function renderVault(){
    <button class="btn primary" data-act="vcreate" style="width:100%">Создать хранилище</button></div>`;
   if(!vaultItems)return h+`<div class="lock"><h2>Пароли закрыты</h2><p>Введи мастер-пароль. После перезагрузки страницы раздел закроется сам.</p>
    <div class="f"><input type="password" id="mp" placeholder="Мастер-пароль" autocomplete="current-password"></div><button class="btn primary" data-act="vopen" style="width:100%">Открыть</button></div>`;
-  h+=`<div class="filters"><button class="chip" data-act="vlock">Закрыть пароли</button></div>`;
+  h+=`<div class="filters"><button class="chip" data-act="vlock">Закрыть пароли</button><button class="chip" data-act="vpopen">Сменить пароль раздела</button></div>`;
   if(!vaultItems.length)return h+emptyBox("Паролей пока нет.","+ Добавить пароль");
   return h+`<div class="list">${[...vaultItems].sort((a,b)=>(a.where||"").localeCompare(b.where||"","ru")).map(vaultRow).join("")}</div>`;
 }
@@ -1047,6 +1097,11 @@ document.addEventListener("click",async e=>{
     case "cforget":if(confirm("Отключить это устройство? Данные на GitHub останутся, но здесь нужно будет заново ввести репозиторий и токен.")){if(dirty&&!confirm("Есть несохранённые изменения. Они пропадут. Продолжить?"))break;localStorage.removeItem(CFG_KEY);localStorage.removeItem(DRAFT_KEY);dirty=false;location.reload()}break;
     case "greset":if(confirm("Сбросить подключение на этом устройстве? Данные на GitHub не пострадают.")){localStorage.removeItem(CFG_KEY);cfg=null;failCount=0;showSetup()}break;
     case "gnewtoken":newToken();break;
+    case "gnewpass":unlockNewPass();break;
+    case "cpopen":openChangePass();break;
+    case "cpsave":changePass();break;
+    case "vpopen":openVaultPass();break;
+    case "vpsave":changeVaultPass();break;
     case "gunlock":unlock();break;
     case "gcreate":createNew();break;
     case "glock":if(dirty&&!confirm("Есть несохранённые изменения. Заблокировать без сохранения?"))break;dirty=false;dataKey=null;state=null;TOKEN=null;vaultKey=null;vaultItems=null;remoteBlob=null;start();break;
@@ -1098,7 +1153,7 @@ document.addEventListener("keydown",e=>{
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"||(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="ы"){e.preventDefault();if(dlgCtx?.kind==="doc"){saveDoc()}saveFile();return}
   if(e.key==="Tab"&&e.target.id==="d-text"&&!e.target.readOnly){e.preventDefault();const t=e.target,a=t.selectionStart;t.setRangeText("  ",a,t.selectionEnd,"end");docInfo();return}
   if(e.key==="Enter"){const id=e.target.id;
-    if(id==="m"){e.preventDefault();unlock();return}if(id==="m2"){e.preventDefault();createNew();return}if(id==="g-path"||id==="g-token"||id==="g-repo"){e.preventDefault();connect();return}if(id==="g-newtoken"){e.preventDefault();newToken();return}
+    if(id==="m"){e.preventDefault();unlock();return}if(id==="m2"){e.preventDefault();createNew();return}if(id==="g-path"||id==="g-token"||id==="g-repo"){e.preventDefault();connect();return}if(id==="g-newtoken"){e.preventDefault();newToken();return}if(id==="mnew"){e.preventDefault();unlockNewPass();return}if(id==="cp-new2"){e.preventDefault();changePass();return}if(id==="vp-new2"){e.preventDefault();changeVaultPass();return}
     if(id==="mp"){e.preventDefault();$('[data-act="vopen"]').click()}
     if(id==="mp2"){e.preventDefault();$('[data-act="vcreate"]').click()}
     if(id?.startsWith("ladd-")){e.preventDefault();$(`[data-ladd="${id.slice(5)}"]`).click()}
