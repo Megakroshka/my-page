@@ -569,7 +569,8 @@ let pendingKey=null;
 function showNewToken(){
   gate(`${eyeAnim()}${gateTitle("Нужен новый токен")}<p>Срок старого токена закончился, или его удалили. Создай новый на GitHub и вставь сюда.</p>
   <label class="f">Новый токен<input id="g-newtoken" type="password" placeholder="github_pat_…" autocomplete="off"></label>
-  <button class="btn primary" data-act="gnewtoken">Продолжить</button><div class="err" id="gerr"></div>`);
+  <button class="btn primary" data-act="gnewtoken">Продолжить</button><div class="err" id="gerr"></div>
+  <button class="lnk" data-act="greset">Сбросить подключение на этом устройстве</button>`);
 }
 async function finishUnlock(key){
   // key: ключ, выведенный из пароля и соли cfg (или null). Загружаем и расшифровываем данные.
@@ -649,7 +650,8 @@ async function unlock(){
 async function newToken(){
   const t=$("#g-newtoken").value.trim();if(!t)return;TOKEN=t;$("#gerr").textContent="Проверяю…";
   try{remoteBlob=await fetchRemote()}catch(e){$("#gerr").textContent=e.message;return}
-  if(!remoteBlob){$("#gerr").textContent="Файл с данными не найден";return}
+  if(!remoteBlob){$("#gerr").textContent="Файл не найден. Проверь, что новому токену дан доступ к репозиторию с данными";return}
+  if(pendingKey&&lastPass){const k=pendingKey;pendingKey=null;$("#gerr").textContent="Открываю…";return finishUnlock(k)}
   showUnlockAfterToken();
 }
 function showUnlockAfterToken(){showUnlock();$("#gerr").textContent="Токен принят. Введи мастер-пароль ещё раз"}
