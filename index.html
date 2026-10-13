@@ -86,6 +86,8 @@ nav{border-right:1px solid var(--line);padding:22px 12px;position:sticky;top:0;h
 .navfoot{padding:12px 10px 0;display:flex;flex-direction:column;gap:6px}
 .navfoot button{border:0;background:none;color:var(--soft);text-align:left;padding:2px 0;font-size:13px}
 .navfoot button:hover{color:var(--acc)}
+.sizeinfo{font-size:12px;color:var(--soft);opacity:.8;margin-bottom:4px}
+.sizeinfo:empty{display:none}
 main{padding:22px clamp(14px,3vw,40px) 80px;max-width:1080px;width:100%}
 .top{display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
 .search{flex:1;min-width:200px;position:relative}
@@ -315,6 +317,12 @@ dialog.wide{width:min(1000px,96vw)}
 .th .nm{padding:8px 10px;font-size:14px;font-weight:600;color:var(--ink)}
 .toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--dlg);border:1px solid var(--acc);color:var(--ink);padding:9px 16px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:60}
 .toast.show{opacity:1}
+.errbar{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:61;display:flex;align-items:center;gap:10px;
+  max-width:min(640px,94vw);background:var(--dlg);border:1px solid var(--danger);color:var(--ink);padding:9px 10px 9px 16px;border-radius:12px;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.errbar[hidden]{display:none}
+.errbar .eb-main{border:0;background:var(--danger);color:#fff;border-radius:8px;padding:6px 12px;font-weight:600;white-space:nowrap}
+.errbar .eb-x{border:0;background:none;color:var(--soft);font-size:18px;width:28px;height:28px;border-radius:6px}
+.errbar .eb-x:hover{background:var(--hover)}
 .mobilefoot{display:none;gap:8px;flex-wrap:wrap;margin-top:30px}
 @media (max-width:780px){
   .app{grid-template-columns:1fr}
@@ -340,6 +348,7 @@ dialog.wide{width:min(1000px,96vw)}
 <input type="file" id="txtFile" accept=".txt,.md,.json,.csv,text/*" hidden>
 <input type="file" id="importFile" accept=".json,.html,application/json,text/html" hidden>
 <div class="toast" id="toast"></div>
+<div class="errbar" id="errbar" hidden><span id="errmsg"></span><button class="eb-main" data-act="retrysave">Повторить</button><button class="eb-x" data-act="errclose" title="Закрыть">×</button></div>
 <script>
 try{document.documentElement.dataset.theme=localStorage.getItem("spravochnik-theme")||"neon"}catch{}
 
@@ -370,11 +379,11 @@ const ico=(id,s=18)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="
 const SECTIONS = [
   {id:"fav",title:"Избранное",sub:"Всё, что отмечено звёздочкой, из всех разделов."},
   "sep",
-  {id:"sites",title:"Сайты движков",sub:"Админки и сайты движков 4, 3 и 2.",engines:["4","3","2"],env:"opt",status:true,groupBy:"engine"},
+  {id:"sites",title:"Сайты движков",sub:"Админки и сайты движков 4, 3 и 2.",engines:["4","3","2"],status:true,groupBy:"engine"},
   {id:"projects",title:"Проекты",sub:"Проекты движков 4 и 3: прод и тест, какие ASR, TTS и LLM подключены.",engines:["4","3"],env:true,stack:true,groupBy:"projenv"},
   {id:"tasks",title:"Задачи",sub:"Что сделать по проектам. Перетаскивай карточки между колонками."},
   {id:"journal",title:"Журнал изменений",sub:"Что, когда и в каком проекте поменяла. Чтобы потом не гадать, после чего всё сломалось."},
-  {id:"sheets",title:"Google-таблицы",sub:"Таблицы движков и общие.",engines:["","4","3","2"],env:"opt",groupBy:"engine"},
+  {id:"sheets",title:"Google-таблицы",sub:"Ссылки на Google-таблицы."},
   "sep",
   {id:"notes",title:"Заметки",sub:"Быстрые записки для себя. Пиши прямо на стикере."},
   {id:"asr",title:"ASR",sub:"Распознавание речи: сервисы, демо, документация."},
@@ -435,22 +444,43 @@ async function fetchRemote(){
   if(r.status===401)throw new Error("Токен не подходит. Проверь его в настройках GitHub");
   if(!r.ok)throw new Error("GitHub ответил ошибкой "+r.status);
   const j=await r.json();remoteSha=j.sha;
-  let txt;
-  if(j.content)txt=atob(j.content.replace(/\s/g,""));
-  else{const r2=await gh(filePath(),{headers:{"Accept":"application/vnd.github.raw"}});txt=await r2.text()}
-  return JSON.parse(txt);
+  let bytes;
+  if(j.content)bytes=ub64(j.content.replace(/\s/g,""));
+  else{const r2=await gh(filePath(),{headers:{"Accept":"application/vnd.github.raw"}});if(!r2.ok)throw new Error("GitHub ответил ошибкой "+r2.status);bytes=new Uint8Array(await r2.arrayBuffer())}
+  fileSize=bytes.length;
+  return parseFile(bytes);
 }
+let fileSize=0,rawSize=0;
+const canZip=typeof CompressionStream!=="undefined"&&typeof DecompressionStream!=="undefined";
+async function pipeBytes(u8,stream){return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(stream)).arrayBuffer())}
+const toU8=v=>typeof v==="string"?ub64(v):v;
 async function encryptState(){
   const iv=crypto.getRandomValues(new Uint8Array(12));
-  const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},dataKey,enc.encode(JSON.stringify(state)));
-  return {app:"spravochnik",v:1,salt:dataSalt,iv:b64(iv),ct:b64(ct),at:state.at||0};
+  let data=enc.encode(JSON.stringify(state));rawSize=data.length;
+  const z=canZip;if(z)data=await pipeBytes(data,new CompressionStream("gzip"));
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},dataKey,data));
+  return {salt:dataSalt,iv,ct,at:state.at||0,z};
 }
 async function decryptBlob(blob,key){
-  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:ub64(blob.iv)},key,ub64(blob.ct));
+  let pt=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv:toU8(blob.iv)},key,toU8(blob.ct)));
+  if(blob.z)pt=await pipeBytes(pt,new DecompressionStream("gzip"));
+  rawSize=pt.length;
   return normalize(JSON.parse(dec.decode(pt)));
 }
+// формат файла: "SPR2" | соль 16 | iv 12 | время 8 | флаг сжатия 1 | шифротекст
+function packFile(b){
+  const out=new Uint8Array(41+b.ct.length);out.set(enc.encode("SPR2"),0);out.set(ub64(b.salt),4);out.set(b.iv,20);
+  new DataView(out.buffer).setFloat64(32,b.at||0);out[40]=b.z?1:0;out.set(b.ct,41);return out;
+}
+function parseFile(bytes){
+  if(bytes[0]===0x7B){const o=JSON.parse(dec.decode(bytes));return {salt:o.salt,iv:o.iv,ct:o.ct,at:o.at||0,z:!!o.z}}
+  if(dec.decode(bytes.subarray(0,4))!=="SPR2")throw new Error("Файл с данными повреждён или не от справочника");
+  return {salt:b64(bytes.slice(4,20)),iv:bytes.slice(20,32),at:new DataView(bytes.buffer,bytes.byteOffset+32,8).getFloat64(0),z:bytes[40]===1,ct:bytes.slice(41)};
+}
+const draftJson=b=>JSON.stringify({salt:b.salt,iv:b64(b.iv),ct:b64(b.ct),at:b.at,z:b.z});
+const fmtSize=n=>n<1024*1024?Math.max(1,Math.round(n/1024))+" КБ":(n/1048576).toFixed(1).replace(".",",")+" МБ";
 function change(){dirty=true;state.at=Date.now();updateSaveUI();
-  clearTimeout(draftTimer);draftTimer=setTimeout(async()=>{try{localStorage.setItem(DRAFT_KEY,JSON.stringify(await encryptState()))}catch{}},400)}
+  clearTimeout(draftTimer);draftTimer=setTimeout(async()=>{try{localStorage.setItem(DRAFT_KEY,draftJson(await encryptState()))}catch{}},400)}
 function updateSaveUI(){
   const b=$("#saveBtn"),h=$("#savehint");if(!b)return;
   b.classList.toggle("clean",!dirty);
@@ -462,7 +492,7 @@ async function saveFile(force){
   saving=true;updateSaveUI();
   try{
     const blob=await encryptState();
-    const body={message:"Обновление "+new Date().toLocaleString("ru-RU"),content:btoa(JSON.stringify(blob))};
+    const packed=packFile(blob);const body={message:"Обновление "+new Date().toLocaleString("ru-RU"),content:b64(packed)};
     if(remoteSha)body.sha=remoteSha;
     let r=await gh(filePath(),{method:"PUT",body:JSON.stringify(body)});
     if((r.status===409||r.status===422)&&!force){saving=false;updateSaveUI();conflict();return}
@@ -472,11 +502,24 @@ async function saveFile(force){
     if(r.status===401)throw new Error("Токен не подходит");
     if(r.status===403||r.status===404)throw new Error("У токена нет права записи в репозиторий");
     if(!r.ok)throw new Error("Ошибка "+r.status);
-    remoteSha=(await r.json()).content.sha;
+    remoteSha=(await r.json()).content.sha;fileSize=packed.length;
     dirty=false;try{localStorage.removeItem(DRAFT_KEY)}catch{}
-    toast("Сохранено на GitHub");
-  }catch(e){toast("Не сохранилось: "+(e.message||"нет связи")+". Данные остались в браузере, попробуй ещё раз")}
+    hideErr();renderNav();toast("Сохранено на GitHub");
+  }catch(e){showErr("Не сохранилось: "+(!e.message||/fetch|network/i.test(e.message)?"нет связи с GitHub":e.message)+". Данные остались в браузере")}
   saving=false;updateSaveUI();
+}
+function showErr(msg){$("#errmsg").textContent=msg;$("#errbar").hidden=false}
+function hideErr(){const e=$("#errbar");if(e)e.hidden=true}
+async function syncRemote(){
+  if(dirty&&!confirm("Есть несохранённые изменения. Загрузить версию с GitHub? Твои несохранённые правки пропадут."))return;
+  toast("Обновляю…");
+  try{
+    const blob=await fetchRemote();if(!blob)throw new Error("файл с данными не найден");
+    if(blob.salt!==dataSalt){toast("Пароль меняли на другом устройстве. Войди заново");dirty=false;dataKey=null;state=null;remoteBlob=null;return start()}
+    state=await decryptBlob(blob,dataKey);dirty=false;vaultKey=null;vaultItems=null;shown.clear();
+    try{localStorage.removeItem(DRAFT_KEY)}catch{}
+    hideErr();applyTheme();render();toast("Обновлено: свежая версия с GitHub");
+  }catch(e){showErr("Не получилось обновить: "+(e.message||"нет связи"))}
 }
 function conflict(){
   showDlg(`<h2>Файл изменили на другом устройстве</h2><p style="color:var(--soft);font-size:14px;margin:0 0 14px">С тех пор как ты открыла справочник, на GitHub сохранили другую версию. Что сделать?</p>
@@ -679,7 +722,7 @@ async function saveConn(){
 
 /* ---------- шифрование ---------- */
 const enc=new TextEncoder(),dec=new TextDecoder();
-const b64=a=>btoa(String.fromCharCode(...new Uint8Array(a)));
+const b64=a=>{const u=new Uint8Array(a);let r="";for(let i=0;i<u.length;i+=0x8000)r+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(r)};
 const ub64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function deriveKey(p,salt){const base=await crypto.subtle.importKey("raw",enc.encode(p),"PBKDF2",false,["deriveKey"]);return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:250000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"])}
 async function sealVault(){const iv=crypto.getRandomValues(new Uint8Array(12));const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},vaultKey,enc.encode(JSON.stringify(vaultItems)));state.vault={salt:state.vault.salt,iv:b64(iv),ct:b64(ct)};change()}
@@ -718,7 +761,7 @@ function renderNav(){
   for(const s of SECTIONS){if(s==="sep"){h+='<div class="navsep"></div>';continue}
     if(s.hideEmpty&&!state.items.some(i=>i.sec===s.id))continue;
     h+=`<button class="navbtn ${cur===s.id&&!query?"on":""}" data-go="${s.id}">${ico(s.id)}<span>${esc(s.title)}</span><small>${count(s.id)}</small></button>`}
-  h+=`<div class="navfoot"><button data-act="themes">Сменить тему</button><button data-act="import">Импорт из копии</button><button data-act="cpopen">Сменить мастер-пароль</button><button data-act="glock">Заблокировать</button><button data-act="gconn">Подключение GitHub</button><button data-act="exportjson">Скачать копию .json</button></div>`;
+  h+=`<div class="navfoot"><span class="sizeinfo">${fileSize?`На GitHub: ${fmtSize(fileSize)}${rawSize?` (данные ${fmtSize(rawSize)})`:""}`:""}</span><button data-act="themes">Сменить тему</button><button data-act="import">Импорт из копии</button><button data-act="cpopen">Сменить мастер-пароль</button><button data-act="glock">Заблокировать</button><button data-act="gconn">Подключение GitHub</button><button data-act="exportjson">Скачать копию .json</button></div>`;
   $("#nav").innerHTML=h;
 }
 const pinFirst=(a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(a.name||"").localeCompare(b.name||"","ru");
@@ -738,7 +781,7 @@ function rowHtml(it,showSec){
 function topBar(){
   const canAdd=!query&&cur!=="lists"&&cur!=="notes"&&cur!=="fav"&&(cur!=="vault"||vaultItems);
   return `<div class="top"><label class="search">${I.search}<input id="q" type="search" placeholder="Поиск по всему справочнику" value="${esc(query)}" autocomplete="off"></label>
-  ${canAdd?`<button class="btn add" data-act="add">+ Добавить</button>`:""}<button class="btn icon" data-act="themes" title="Сменить тему">${ico("palette",18)}</button><button class="btn save ${dirty?"":"clean"}" id="saveBtn" data-act="save">Сохранить<span class="dot"></span></button></div>
+  ${canAdd?`<button class="btn add" data-act="add">+ Добавить</button>`:""}<button class="btn icon" data-act="sync" title="Обновить с GitHub"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></svg></button><button class="btn icon" data-act="themes" title="Сменить тему">${ico("palette",18)}</button><button class="btn save ${dirty?"":"clean"}" id="saveBtn" data-act="save">Сохранить<span class="dot"></span></button></div>
   <div class="savehint ${dirty?"dirty":""}" id="savehint"></div>`;
 }
 const GIFNUM={fav:1,sites:2,projects:3,tasks:4,sheets:5,notes:6,asr:7,tts:8,learn:9,apps:10,refs:11,games:12,kb:13,vault:14,lists:15,journal:16};
@@ -1092,6 +1135,9 @@ document.addEventListener("click",async e=>{
   if(t.closest(".seg")&&d.v!==undefined){t.parentElement.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b===t));return}
   switch(d.act){
     case "save":saveFile();break;
+    case "sync":syncRemote();break;
+    case "retrysave":hideErr();saveFile();break;
+    case "errclose":hideErr();break;
     case "gconnect":connect();break;
     case "gretry":start();break;
     case "gconn":openConn();break;
