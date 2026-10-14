@@ -302,6 +302,20 @@ dialog.wide{width:min(1000px,96vw)}
 .catrow{display:flex;gap:4px;align-items:center}
 .catrow input{flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:color-mix(in srgb,var(--ink) 4%,transparent);color:var(--ink)}
 .catrow .ib:disabled{opacity:.25;cursor:default}
+/* выбор и перенос */
+.selbox{width:18px;height:18px;accent-color:var(--acc);margin:0;cursor:pointer}
+.row.selrow{grid-template-columns:auto auto 1fr auto}
+.chip.addcat.on{border-style:solid}
+.selbar{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  max-width:min(900px,96vw);background:var(--dlg);border:1px solid var(--acc);border-radius:14px;padding:10px 12px;box-shadow:0 12px 40px rgba(0,0,0,.35);font-size:14px}
+.selbar select{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:color-mix(in srgb,var(--ink) 4%,transparent);color:var(--ink);max-width:200px}
+.selbar select option{background:var(--dlg)}
+.selbar .btn{padding:8px 12px}
+body:has(.selbar) .toast,body:has(.selbar) .errbar{bottom:calc(130px + env(safe-area-inset-bottom,0px))}
+.selbar .btn:disabled{opacity:.4;cursor:default}
+.navadd{color:var(--acc)!important;opacity:1!important;border:1px dashed color-mix(in srgb,var(--acc) 45%,transparent)!important;margin:4px 0}
+@media (max-width:780px){.row.selrow{grid-template-columns:auto auto 1fr}}
+.btn.restorebtn{padding:6px 12px;font-size:13px;color:var(--acc)}
 /* стикеры */
 .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:22px 18px;padding:8px 2px 20px}
 .sticky{position:relative;min-height:180px;padding:22px 14px 12px;border-radius:2px 2px 14px 2px;color:#2B2620;
@@ -391,6 +405,7 @@ const IC = {
   cart:'<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a2 2 0 0 0 2 1.6h8.6a2 2 0 0 0 2-1.6L22 7H6"/>',
   plane:'<path d="M2 12h20M13 5l7 7-7 7"/>',
   gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
+  trash:'<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/>',
   lists:'<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1.5"/><circle cx="4" cy="12" r="1.5"/><circle cx="4" cy="18" r="1.5"/>',
 };
 const ico=(id,s=18)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[id]}</svg>`;
@@ -415,6 +430,7 @@ const BASE_SECTIONS = [
   "sep",
   {id:"vault",title:"Пароли",sub:"Зашифрованы мастер-паролем. Без него их не прочитать, даже открыв файл."},
   {id:"lists",title:"Списки ASR / TTS / LLM",sub:"Варианты, которые выбираются в проектах."},
+  {id:"trash",title:"Корзина",sub:"Удалённое хранится здесь 30 дней. Можно восстановить или удалить насовсем."},
 ];
 const THEMES=[
  {id:"neon",name:"Неон",pv:["#080B18","#2EF2FF","#9D6BFF","#FFC43D"]},
@@ -443,7 +459,7 @@ function rebuildSections(){
 const ENG_LABEL={"":"Общие","4":"Движок 4","3":"Движок 3","2":"Движок 2"};
 
 /* ---------- состояние ---------- */
-let state, cur="sites", query="", engFilter="all", genFilter="all", envFilter="all", catFilter="all";
+let state, cur="sites", query="", engFilter="all", genFilter="all", envFilter="all", catFilter="all", selMode=false, selected=new Set();
 let vaultKey=null, vaultItems=null, shown=new Set(), dirty=false, fileHandle=null;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -455,7 +471,7 @@ function autoName(u){try{const x=new URL(safeUrl(u));if(x.hostname.includes("doc
 const arr=v=>Array.isArray(v)?v.filter(Boolean):(v?[v]:[]);
 function normalize(s){s=s&&typeof s==="object"?s:{};
   const items=(Array.isArray(s.items)?s.items:[]).map(i=>i.sec==="projects"?{...i,asr:arr(i.asr),tts:arr(i.tts),llm:arr(i.llm)}:i);
-  return {v:2,at:s.at||0,theme:s.theme||"neon",items,notes:Array.isArray(s.notes)?s.notes:[],tabs:Array.isArray(s.tabs)?s.tabs.map(t=>({...t,cats:Array.isArray(t.cats)?t.cats:[]})):[{id:"games",title:"Anel",sub:"Моё: игры, сайты и всё, что захочу. Категории добавляй сама.",icon:"heart",color:"#FF6B9A",gif:12,cats:[]}],tasks:Array.isArray(s.tasks)?s.tasks:[],journal:Array.isArray(s.journal)?s.journal:[],docs:Array.isArray(s.docs)?s.docs.map(d=>({...d,projects:arr(d.projects),history:Array.isArray(d.history)?d.history:[]})):[],lists:{asr:s.lists?.asr||[],tts:s.lists?.tts||[],llm:s.lists?.llm||[]},vault:s.vault||null}}
+  return {v:2,at:s.at||0,theme:s.theme||"neon",items,notes:Array.isArray(s.notes)?s.notes:[],trash:Array.isArray(s.trash)?s.trash:[],tabs:Array.isArray(s.tabs)?s.tabs.map(t=>({...t,cats:Array.isArray(t.cats)?t.cats:[]})):[{id:"games",title:"Anel",sub:"Моё: игры, сайты и всё, что захочу. Категории добавляй сама.",icon:"heart",color:"#FF6B9A",gif:12,cats:[]}],tasks:Array.isArray(s.tasks)?s.tasks:[],journal:Array.isArray(s.journal)?s.journal:[],docs:Array.isArray(s.docs)?s.docs.map(d=>({...d,projects:arr(d.projects),history:Array.isArray(d.history)?d.history:[]})):[],lists:{asr:s.lists?.asr||[],tts:s.lists?.tts||[],llm:s.lists?.llm||[]},vault:s.vault||null}}
 function applyTheme(){if(!state)return;document.documentElement.dataset.theme=state.theme||"neon";try{localStorage.setItem("spravochnik-theme",state.theme)}catch{}}
 
 /* ---------- GitHub ---------- */
@@ -734,7 +750,7 @@ async function createNew(){
   state=normalize({theme:localStorage.getItem("spravochnik-theme")||"neon",items:[],notes:[]});
   state.at=Date.now();await storeCfg();enterApp();dirty=true;await saveFile();
 }
-function enterApp(){document.body.classList.remove("gated");applyTheme();render()}
+function enterApp(){document.body.classList.remove("gated");applyTheme();try{purgeTrash()}catch{}render()}
 function openConn(){
   showDlg(`<h2>Подключение GitHub</h2>
   <label class="f">Репозиторий<input id="c-repo" value="${esc(cfg.owner+"/"+cfg.repo)}"></label>
@@ -766,7 +782,7 @@ const I={
   search:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
   user:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
 };
-const ACC={tasks:"#4DA3FF",journal:"#FF9F43",kb:"#B57CFF",fav:"#FFB020",notes:"#FFC93D",sites:"#2EF2FF",projects:"#9D6BFF",scripts:"#3DFF8E",sheets:"#34D399",asr:"#FF7AB6",tts:"#FFB86B",learn:"#7AA2FF",apps:"#5EEAD4",refs:"#C4B5FD",games:"#FF6B9A",vault:"#FFC43D",lists:"#2EF2FF"};
+const ACC={trash:"#8A93A6",tasks:"#4DA3FF",journal:"#FF9F43",kb:"#B57CFF",fav:"#FFB020",notes:"#FFC93D",sites:"#2EF2FF",projects:"#9D6BFF",scripts:"#3DFF8E",sheets:"#34D399",asr:"#FF7AB6",tts:"#FFB86B",learn:"#7AA2FF",apps:"#5EEAD4",refs:"#C4B5FD",games:"#FF6B9A",vault:"#FFC43D",lists:"#2EF2FF"};
 function skyline(id){
   let seed=[...id].reduce((a,c)=>a*31+c.charCodeAt(0),7)>>>0;const rnd=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
   const a=accOf(id);let back="",front="",win="";
@@ -784,7 +800,7 @@ function skyline(id){
 }
 
 /* ---------- отрисовка ---------- */
-function count(id){if(id==="vault")return vaultItems?vaultItems.length:"";if(id==="tasks")return state.tasks.filter(t=>t.col!=="done").length||"";if(id==="journal")return state.journal.length||"";if(id==="kb")return state.docs.length||"";if(id==="fav")return state.items.filter(i=>i.starred).length||"";if(id==="notes")return state.notes.length||"";if(id==="lists")return state.lists.asr.length+state.lists.tts.length+state.lists.llm.length||"";return state.items.filter(i=>i.sec===id).length||""}
+function count(id){if(id==="vault")return vaultItems?vaultItems.length:"";if(id==="trash")return state.trash.length||"";if(id==="tasks")return state.tasks.filter(t=>t.col!=="done").length||"";if(id==="journal")return state.journal.length||"";if(id==="kb")return state.docs.length||"";if(id==="fav")return state.items.filter(i=>i.starred).length||"";if(id==="notes")return state.notes.length||"";if(id==="lists")return state.lists.asr.length+state.lists.tts.length+state.lists.llm.length||"";return state.items.filter(i=>i.sec===id).length||""}
 function renderNav(){
   let h=`<div class="brand">${HEART_SVG.replace('id="hg"','id="hg2"').replace("url(#hg)","url(#hg2)")}Coding girl</div>`;
   for(const s of SECTIONS){if(s==="sep"){h+='<div class="navsep"></div>';continue}
@@ -805,11 +821,12 @@ function rowHtml(it,showSec){
   if(it.env&&s.env)meta.push(`<span class="env ${it.env}">${it.env==="prod"?"Прод":"Тест"}</span>`);if(it.gender)meta.push(genPill(it.gender));
   if(url)meta.push(`<span class="dom">${esc(domainOf(url))}</span>`);
   if(it.note)meta.push(esc(it.note));if(it.status==="old")meta.push("старый");
-  return `<div class="row ${it.status==="old"?"old":""} ${it.pinned?"pinned":""}">${tag}<div style="min-width:0">${nm}${it.pinned?`<span class="mark" title="Закреплено">${ico("pin",14)}</span>`:""}<div class="meta">${meta.map(m=>`<span>${m}</span>`).join("")}</div>${s.stack?stackPills(it):""}</div>
+  const selBox=selMode&&!showSec&&isMovable(it.sec)?`<input type="checkbox" class="selbox" data-selid="${it.id}" ${selected.has(it.id)?"checked":""}>`:"";
+  return `<div class="row ${it.status==="old"?"old":""} ${it.pinned?"pinned":""} ${selBox?"selrow":""}">${selBox}${tag}<div style="min-width:0">${nm}${it.pinned?`<span class="mark" title="Закреплено">${ico("pin",14)}</span>`:""}<div class="meta">${meta.map(m=>`<span>${m}</span>`).join("")}</div>${s.stack?stackPills(it):""}</div>
   <div class="acts">${s.id==="projects"?(()=>{const n=state.docs.filter(d=>d.projects.includes(it.id)).length;return `<button class="ib docs ${n?"has":""}" title="Документы проекта" data-pdocs="${it.id}">${ico("kb",16)}${n?`<small>${n}</small>`:""}</button>`})():""}<button class="ib star ${it.starred?"on":""}" title="${it.starred?"Убрать из избранного":"В избранное"}" data-star="${it.id}">${ico("fav",17)}</button><button class="ib pin ${it.pinned?"on":""}" title="${it.pinned?"Открепить":"Закрепить сверху"}" data-pin="${it.id}">${ico("pin",17)}</button>${url?`<button class="ib" title="Скопировать ссылку" data-copy="${esc(url)}">${I.copy}</button>`:""}<button class="ib" title="Изменить" data-edit="${it.id}">${I.edit}</button></div></div>`;
 }
 function topBar(){
-  const canAdd=!query&&cur!=="lists"&&cur!=="notes"&&cur!=="fav"&&(cur!=="vault"||vaultItems);
+  const canAdd=!query&&cur!=="trash"&&cur!=="lists"&&cur!=="notes"&&cur!=="fav"&&(cur!=="vault"||vaultItems);
   return `<div class="top"><label class="search">${I.search}<input id="q" type="search" placeholder="Поиск по всему справочнику" value="${esc(query)}" autocomplete="off"></label>
   ${canAdd?`<button class="btn add" data-act="add">+ Добавить</button>`:""}<button class="btn icon" data-act="sync" title="Обновить с GitHub"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></svg></button><button class="btn icon" data-act="themes" title="Сменить тему">${ico("palette",18)}</button><button class="btn save ${dirty?"":"clean"}" id="saveBtn" data-act="save">Сохранить<span class="dot"></span></button></div>
   <div class="savehint ${dirty?"dirty":""}" id="savehint"></div>`;
@@ -829,9 +846,9 @@ function render(){
   renderNav();
   const m=$("#main"),focused=document.activeElement?.id==="q",pos=focused?$("#q").selectionStart:0;
   let body;
-  if(query)body=renderSearch();else if(cur==="vault")body=renderVault();else if(cur==="lists")body=renderLists();else if(cur==="notes")body=renderNotes();else if(cur==="fav")body=renderFav();else if(cur==="kb")body=renderKb();else if(cur==="tasks")body=renderTasks();else if(cur==="journal")body=renderJournal();else body=renderSection(SEC[cur]);
+  if(query)body=renderSearch();else if(cur==="vault")body=renderVault();else if(cur==="lists")body=renderLists();else if(cur==="notes")body=renderNotes();else if(cur==="fav")body=renderFav();else if(cur==="kb")body=renderKb();else if(cur==="tasks")body=renderTasks();else if(cur==="journal")body=renderJournal();else if(cur==="trash")body=renderTrash();else body=renderSection(SEC[cur]);
   m.innerHTML=topBar()+body+`<div class="mobilefoot"><button class="btn" data-act="import">Импорт из копии</button><button class="btn" data-act="exportjson">Скачать копию .json</button></div>`;
-  updateSaveUI();
+  updateSaveUI();renderSelBar();
   if(focused){const q=$("#q");q.focus();q.setSelectionRange(pos,pos)}
 }
 function emptyBox(text,btn){return `<div class="empty-state">${ico(SEC[cur]?.icon||cur,34)}<div>${text}</div>${btn?`<button class="btn add" data-act="add">${btn}</button>`:""}</div>`}
@@ -839,6 +856,7 @@ function renderSection(s){
   if(s.cats)return renderCatSection(s);
   let items=state.items.filter(i=>i.sec===s.id);
   let h=hero(s.id,s.title,s.sub);
+  if(isMovable(s.id)&&items.length)h+=`<div class="filters"><button class="chip addcat ${selMode?"on":""}" data-act="selmode">Выбрать и переместить</button></div>`;
   if(s.engines&&s.engines.length>1){
     const opts=["all",...s.engines];
     h+=`<div class="filters">${opts.map(e=>`<button class="chip ${engFilter===e?"on":""}" data-eng="${e}">${e==="all"?"Все":ENG_LABEL[e]}</button>`).join("")}</div>`;
@@ -1091,13 +1109,76 @@ function saveJournal(){
   change();closeDlg();render();
 }
 
+/* ---------- корзина ---------- */
+const TRASH_DAYS=30;
+const KIND={item:"Запись",note:"Заметка",doc:"Документ",task:"Задача",journal:"Журнал",tab:"Вкладка"};
+const KIND_ICON={item:"folder",note:"notes",doc:"kb",task:"tasks",journal:"journal",tab:"apps"};
+let trashKind="all";
+function toTrash(kind,data,from,title,extra){state.trash.unshift({tid:uid(),kind,at:Date.now(),from,title:title||"Без названия",data,...(extra||{})})}
+function purgeTrash(){const lim=Date.now()-TRASH_DAYS*864e5;const n=state.trash.length;state.trash=state.trash.filter(t=>t.at>lim);if(state.trash.length!==n)change()}
+function trashFrom(it){return SEC[it.sec]?.title||"?"}
+function restoreTrash(tid){
+  const t=state.trash.find(x=>x.tid===tid);if(!t)return;
+  const d=t.data;
+  if(t.kind==="item"){
+    if(!SEC[d.sec]){const fb=state.tabs[0];if(!fb){toast("Вкладка этой записи удалена. Создай любую вкладку и попробуй снова");return}d.sec=fb.id;d.cat=""}
+    const tab=SEC[d.sec]?.tab;if(tab&&d.cat&&!tab.cats.some(c=>c.id===d.cat))d.cat="";
+    if(state.items.some(i=>i.id===d.id))d.id=uid();
+    state.items.push(d);
+    if(t.links){state.docs.forEach(x=>{if(t.links.docs.includes(x.id)&&!x.projects.includes(d.id))x.projects.push(d.id)});state.tasks.forEach(x=>{if(t.links.tasks.includes(x.id)&&!x.project)x.project=d.id});state.journal.forEach(x=>{if(t.links.journal.includes(x.id)&&!x.project)x.project=d.id})}
+  }
+  else if(t.kind==="note")state.notes.push(d);
+  else if(t.kind==="doc"){d.projects=d.projects.filter(p=>state.items.some(i=>i.id===p));state.docs.push(d)}
+  else if(t.kind==="task"){if(d.project&&!state.items.some(i=>i.id===d.project))d.project="";state.tasks.push(d)}
+  else if(t.kind==="journal"){if(d.project&&!state.items.some(i=>i.id===d.project))d.project="";state.journal.push(d)}
+  else if(t.kind==="tab"){if(state.tabs.some(x=>x.id===d.tab.id))d.tab.id="t_"+uid();state.tabs.push(d.tab);d.items.forEach(i=>{i.sec=d.tab.id;state.items.push(i)})}
+  state.trash=state.trash.filter(x=>x.tid!==tid);change();render();toast("Восстановлено: «"+t.title+"»");
+}
+function renderTrash(){
+  const s=SEC.trash;let h=hero("trash",s.title,s.sub);
+  const kinds=[...new Set(state.trash.map(t=>t.kind))];
+  if(state.trash.length)h+=`<div class="filters"><button class="chip ${trashKind==="all"?"on":""}" data-trk="all">Всё</button>${kinds.map(k=>`<button class="chip ${trashKind===k?"on":""}" data-trk="${k}">${KIND[k]}</button>`).join("")}<span class="gap"></span><button class="chip addcat" data-act="trempty">Очистить корзину</button></div>`;
+  let list=state.trash;if(trashKind!=="all")list=list.filter(t=>t.kind===trashKind);
+  if(!list.length)return h+`<div class="empty-state">${ico("trash",34)}<div>Корзина пуста.</div></div>`;
+  return h+`<div class="list">${list.map(t=>{const left=Math.max(0,Math.ceil((t.at+TRASH_DAYS*864e5-Date.now())/864e5));
+    return `<div class="row"><div class="tag t0">${ico(KIND_ICON[t.kind]||"folder",16)}</div><div style="min-width:0"><span class="name">${esc(t.title)}</span>
+    <div class="meta"><span class="pchip">${KIND[t.kind]}</span><span>из «${esc(t.from)}»</span><span>удалено ${fmtDate(t.at)}</span><span>${left<=3?`<b style="color:var(--danger)">осталось ${left} дн.</b>`:`осталось ${left} дн.`}</span></div></div>
+    <div class="acts"><button class="btn restorebtn" data-trrestore="${t.tid}">Восстановить</button><button class="ib" title="Удалить навсегда" data-trkill="${t.tid}">×</button></div></div>`}).join("")}</div>`;
+}
+
 /* ---------- свои вкладки и категории ---------- */
+const MOVABLE_BASE=["sites","sheets","asr","tts","learn","apps","refs","scripts"];
+const isMovable=id=>MOVABLE_BASE.includes(id)||!!SEC[id]?.tab;
+const moveTargets=()=>SECTIONS.filter(x=>typeof x==="object"&&isMovable(x.id)&&!(x.hideEmpty&&!state.items.some(i=>i.sec===x.id)));
+function quickNewTab(name){
+  name=(name||"").trim();if(!name)return null;
+  const t={id:"t_"+uid(),title:name,sub:"",icon:"folder",color:TAB_COLORS[state.tabs.length%TAB_COLORS.length],gif:Math.max(16,...state.tabs.map(x=>x.gif||0))+1,cats:[]};
+  state.tabs.push(t);change();rebuildSections();return t.id;
+}
+function secOptions(sel,withNew){return moveTargets().map(x=>`<option value="${x.id}" ${x.id===sel?"selected":""}>${esc(x.title)}</option>`).join("")+(withNew?'<option value="__newtab">+ Новая вкладка…</option>':"")}
+function catOptions(secId,sel){const t=SEC[secId]?.tab;if(!t)return "";return `<option value="">Без категории</option>${t.cats.map(c=>`<option value="${c.id}" ${c.id===sel?"selected":""}>${esc(c.name)}</option>`).join("")}<option value="__new">+ новая категория…</option>`}
+function renderSelBar(){
+  let bar=$("#selbar");
+  if(!selMode){if(bar)bar.remove();return}
+  if(!bar){bar=document.createElement("div");bar.id="selbar";bar.className="selbar";document.body.appendChild(bar)}
+  const tgt=bar.dataset.tgt||moveTargets().find(x=>x.id!==cur)?.id||"";
+  const hasCats=!!SEC[tgt]?.tab;
+  bar.innerHTML=`<b>Выбрано: ${selected.size}</b><span>Переместить в</span><select id="sel-tgt">${secOptions(tgt,true)}</select>${hasCats?`<select id="sel-cat" data-catsel="${tgt}">${catOptions(tgt,"")}</select>`:""}
+  <button class="btn primary" data-act="selmove" ${selected.size?"":"disabled"}>Переместить</button><button class="btn" data-act="selall">Выбрать все</button><button class="btn" data-act="selcancel">Отмена</button>`;
+  bar.dataset.tgt=tgt;
+}
+function moveSelected(){
+  const tgt=$("#sel-tgt").value,catSel=$("#sel-cat");const cat=catSel&&catSel.value!=="__new"?catSel.value:"";
+  if(!tgt||!selected.size)return;
+  let n=0;state.items.forEach(i=>{if(selected.has(i.id)){i.sec=tgt;if(SEC[tgt]?.tab)i.cat=cat;else delete i.cat;n++}});
+  selected.clear();selMode=false;change();renderSelBar();const name=SEC[tgt]?.title;render();toast(`Перемещено: ${n} → ${name}`);
+}
 function renderCatSection(s){
   const tab=s.tab,cats=tab.cats;let items=state.items.filter(i=>i.sec===s.id);
   const valid=new Set(cats.map(c=>c.id));const noCat=items.filter(i=>!valid.has(i.cat));
   let h=hero(s.id,s.title,s.sub);
   h+=`<div class="filters"><button class="chip ${catFilter==="all"?"on":""}" data-catf="all">Все</button>${cats.map(c=>`<button class="chip ${catFilter===c.id?"on":""}" data-catf="${c.id}">${esc(c.name)}</button>`).join("")}${noCat.length&&cats.length?`<button class="chip ${catFilter==="none"?"on":""}" data-catf="none">Без категории</button>`:""}
-  <span class="gap"></span><button class="chip addcat" data-act="addcat">+ Категория</button><button class="chip addcat" data-act="tabsettings">${ico("gear",13)} Настроить вкладку</button></div>`;
+  <span class="gap"></span><button class="chip addcat" data-act="addcat">+ Категория</button><button class="chip addcat ${selMode?"on":""}" data-act="selmode">Выбрать и переместить</button><button class="chip addcat" data-act="tabsettings">${ico("gear",13)} Настроить вкладку</button></div>`;
   if(!items.length)return h+emptyBox("Здесь пока пусто.","+ Добавить первую запись");
   const groups=[];
   if(catFilter==="all"){for(const c of cats)groups.push([c.name,items.filter(i=>i.cat===c.id)]);groups.push([cats.length?"Без категории":"",noCat])}
@@ -1158,7 +1239,8 @@ function openItem(it){
     if(s.status)h+=`<label class="f">Статус<div class="seg" data-seg="status">${[["ok","Работает"],["old","Старый"]].map(([v,l])=>`<button type="button" data-v="${v}" class="${(it.status||"ok")===v?"on":""}">${l}</button>`).join("")}</div></label>`;
     h+='</div>'}
   if(s.stack)h+=`<label class="f">Голос бота<div class="seg" data-seg="gender">${[["","Не указан"],["m","♂ Мужской"],["f","♀ Женский"]].map(([v,l])=>`<button type="button" data-v="${v}" class="${(it.gender||"")===v?"on":""}">${l}</button>`).join("")}</div></label>${multiStack("asr",it.asr)}${multiStack("tts",it.tts)}${multiStack("llm",it.llm)}`;
-  if(s.cats)h+=catSelect(s.tab,it.cat||(isNew&&catFilter!=="all"&&catFilter!=="none"?catFilter:""));
+  if(!isNew&&isMovable(secId))h+=`<div class="frow"><label class="f">Вкладка<select id="f-sec">${secOptions(secId,true)}</select></label><div id="f-catwrap">${s.cats?catSelect(s.tab,it.cat||""):""}</div></div>`;
+  else if(s.cats)h+=`<div id="f-catwrap">${catSelect(s.tab,it.cat||(isNew&&catFilter!=="all"&&catFilter!=="none"?catFilter:""))}</div>`;
   h+=`<label class="f">Заметка<textarea id="f-note" placeholder="Для чего, клиент, с какой даты">${esc(it.note||"")}</textarea></label>
   <div class="dlgfoot">${isNew?"":`<button class="btn danger" data-act="del">Удалить</button>`}<div class="r"><button class="btn" data-act="close">Отмена</button><button class="btn primary" data-act="saveitem">Готово</button></div></div>`;
   showDlg(h,{kind:"item",it,isNew});
@@ -1179,11 +1261,14 @@ async function copy(t){try{await navigator.clipboard.writeText(t);toast("Ско�
 document.addEventListener("click",async e=>{
   if(!e.target.closest("button")){const kc=e.target.closest(".kcard");if(kc){openTask(state.tasks.find(x=>x.id===kc.dataset.tid));return}}
   const t=e.target.closest("button");if(!t)return;const d=t.dataset;
-  if(d.go){cur=d.go;query="";catFilter="all";engFilter="all";envFilter="all";taskProj="all";jProj="all";jType="all";render();scrollTo(0,0);return}
+  if(d.go){trashKind="all";cur=d.go;query="";catFilter="all";selMode=false;selected.clear();engFilter="all";envFilter="all";taskProj="all";jProj="all";jType="all";render();scrollTo(0,0);return}
   if(d.eng){engFilter=d.eng;render();return}
   if(d.gen){genFilter=d.gen;render();return}
   if(d.envf){envFilter=d.envf;render();return}
   if(d.catf){catFilter=d.catf;render();return}
+  if(d.trk){trashKind=d.trk;render();return}
+  if(d.trrestore){restoreTrash(d.trrestore);return}
+  if(d.trkill){const t=state.trash.find(x=>x.tid===d.trkill);if(t&&confirm(`Удалить «${t.title}» навсегда? Это не отменить.`)){state.trash=state.trash.filter(x=>x.tid!==d.trkill);change();render()}return}
   if(d.ticon){readTabForm();dlgCtx.draft.icon=d.ticon;drawTabSettings();return}
   if(d.tcolor){readTabForm();dlgCtx.draft.color=d.tcolor;drawTabSettings();return}
   if(d.catup!==undefined||d.catdown!==undefined){readTabForm();const a=dlgCtx.draft.cats,i=+(d.catup??d.catdown),j=d.catup!==undefined?i-1:i+1;if(a[j]){[a[i],a[j]]=[a[j],a[i]];drawTabSettings()}return}
@@ -1213,7 +1298,7 @@ document.addEventListener("click",async e=>{
     if(!b){if(!box.querySelector(".mopt"))box.innerHTML="";b=document.createElement("button");b.type="button";b.className="mopt";b.dataset.mv=v;b.textContent=v;box.appendChild(b)}
     b.classList.add("on");inp.value="";inp.focus();return}
   if(d.ncolor){const[id,c]=d.ncolor.split(":");const n=state.notes.find(x=>x.id===id);if(n){n.color=c;change();render()}return}
-  if(d.ndel){if(confirm("Удалить заметку?")){state.notes=state.notes.filter(x=>x.id!==d.ndel);change();render()}return}
+  if(d.ndel){if(confirm("Удалить заметку? Она попадёт в корзину.")){const nn=state.notes.find(x=>x.id===d.ndel);toTrash("note",nn,"Заметки",(nn.text||"").trim().split("\n")[0].slice(0,60)||"Пустая заметка");state.notes=state.notes.filter(x=>x.id!==d.ndel);change();render()}return}
   if(d.copy!==undefined){copy(d.copy);return}
   if(d.edit){openItem(state.items.find(i=>i.id===d.edit));return}
   if(d.show){shown.has(d.show)?shown.delete(d.show):shown.add(d.show);render();return}
@@ -1224,12 +1309,17 @@ document.addEventListener("click",async e=>{
   if(t.closest(".seg")&&d.v!==undefined){t.parentElement.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b===t));return}
   switch(d.act){
     case "save":saveFile();break;
-    case "newtab":openTabSettings(null);break;
+    case "trempty":if(confirm(`Удалить из корзины всё (${state.trash.length}) навсегда? Это не отменить.`)){state.trash=[];change();render()}break;
+    case "newtab":{const id=quickNewTab(prompt("Название новой вкладки:"));if(id){cur=id;catFilter="all";render();toast("Вкладка создана. Иконку, цвет и категории можно поменять в «Настроить вкладку»")}break}
+    case "selmode":selMode=!selMode;selected.clear();render();break;
+    case "selcancel":selMode=false;selected.clear();render();break;
+    case "selall":{const vis=[...document.querySelectorAll(".selbox")];const all=vis.every(x=>x.checked);vis.forEach(x=>{x.checked=!all;!all?selected.add(x.dataset.selid):selected.delete(x.dataset.selid)});renderSelBar();break}
+    case "selmove":moveSelected();break;
     case "tabsettings":openTabSettings(SEC[cur].tab);break;
     case "tbsave":saveTabSettings();break;
     case "tbaddcat":{readTabForm();const v=$("#tb-newcat").value.trim();if(v){dlgCtx.draft.cats.push({id:uid(),name:v});drawTabSettings();setTimeout(()=>$("#tb-newcat")?.focus(),0)}break}
     case "tbdel":{const d=dlgCtx.draft,n=state.items.filter(i=>i.sec===d.id).length;
-      if(confirm(n?`Удалить вкладку «${d.title}» вместе с записями (${n})? Это не отменить.`:`Удалить вкладку «${d.title}»?`)){state.items=state.items.filter(i=>i.sec!==d.id);state.tabs=state.tabs.filter(t=>t.id!==d.id);cur="fav";change();closeDlg();render()}break}
+      if(confirm(n?`Удалить вкладку «${d.title}» вместе с записями (${n})? Всё попадёт в корзину.`:`Удалить вкладку «${d.title}»? Она попадёт в корзину.`)){{const orig=state.tabs.find(t=>t.id===d.id);toTrash("tab",{tab:orig,items:state.items.filter(i=>i.sec===d.id)},"Мои вкладки",orig.title+(n?` (${n} зап.)`:""))}state.items=state.items.filter(i=>i.sec!==d.id);state.tabs=state.tabs.filter(t=>t.id!==d.id);cur="fav";change();closeDlg();render()}break}
     case "addcat":{const v=prompt("Название категории:");if(v&&v.trim()){const id=addCategory(SEC[cur].tab,v);catFilter=id;render()}break}
     case "sync":syncRemote();break;
     case "retrysave":hideErr();saveFile();break;
@@ -1255,12 +1345,12 @@ document.addEventListener("click",async e=>{
     case "newnote":{const n={id:uid(),text:"",color:NOTE_COLORS[state.notes.length%NOTE_COLORS.length],at:Date.now()};state.notes.push(n);change();render();setTimeout(()=>document.querySelector(`[data-note="${n.id}"]`)?.focus(),0);break}
     case "add":cur==="vault"?openVaultItem():cur==="kb"?openDoc():cur==="tasks"?openTask(null,"todo"):cur==="journal"?openJournal():openItem();break;
     case "tsave":saveTask();break;
-    case "tdel":if(confirm("Удалить задачу?")){state.tasks=state.tasks.filter(x=>x.id!==dlgCtx.t.id);change();closeDlg();render()}break;
-    case "tclear":{const n=state.tasks.filter(t=>t.col==="done"&&(taskProj==="all"||t.project===taskProj)).length;if(confirm(`Удалить готовые задачи (${n})?`)){state.tasks=state.tasks.filter(t=>!(t.col==="done"&&(taskProj==="all"||t.project===taskProj)));change();render()}break}
+    case "tdel":if(confirm("Удалить задачу? Она попадёт в корзину.")){{const tt=state.tasks.find(x=>x.id===dlgCtx.t.id);if(tt)toTrash("task",tt,"Задачи",tt.title)}state.tasks=state.tasks.filter(x=>x.id!==dlgCtx.t.id);change();closeDlg();render()}break;
+    case "tclear":{const n=state.tasks.filter(t=>t.col==="done"&&(taskProj==="all"||t.project===taskProj)).length;if(confirm(`Удалить готовые задачи (${n})? Они попадут в корзину.`)){state.tasks.filter(t=>t.col==="done"&&(taskProj==="all"||t.project===taskProj)).forEach(t=>toTrash("task",t,"Задачи",t.title));state.tasks=state.tasks.filter(t=>!(t.col==="done"&&(taskProj==="all"||t.project===taskProj)));change();render()}break}
     case "jsave":saveJournal();break;
-    case "jdel":if(confirm("Удалить запись?")){state.journal=state.journal.filter(x=>x.id!==dlgCtx.j.id);change();closeDlg();render()}break;
+    case "jdel":if(confirm("Удалить запись? Она попадёт в корзину.")){{const jj=state.journal.find(x=>x.id===dlgCtx.j.id);if(jj)toTrash("journal",jj,"Журнал изменений",(jj.text||"").split("\n")[0].slice(0,60))}state.journal=state.journal.filter(x=>x.id!==dlgCtx.j.id);change();closeDlg();render()}break;
     case "dsave":saveDoc();break;
-    case "ddel":if(confirm("Удалить документ со всеми версиями?")){state.docs=state.docs.filter(x=>x.id!==dlgCtx.doc.id);change();closeDlg();render()}break;
+    case "ddel":if(confirm("Удалить документ со всеми версиями? Он попадёт в корзину.")){{const dd=state.docs.find(x=>x.id===dlgCtx.doc.id);if(dd)toTrash("doc",dd,"База знаний",dd.title)}state.docs=state.docs.filter(x=>x.id!==dlgCtx.doc.id);change();closeDlg();render()}break;
     case "dcopytxt":copy($("#d-text").value);break;
     case "dupload":$("#txtFile").click();break;
     case "ddownload":{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([$("#d-text").value],{type:"text/plain;charset=utf-8"}));a.download=(($("#d-title").value.trim()||"document").replace(/[\\/:*?"<>|]/g,"_"))+".txt";document.body.appendChild(a);a.click();a.remove();break}
@@ -1269,11 +1359,13 @@ document.addEventListener("click",async e=>{
     case "saveitem":{const{it,isNew}=dlgCtx,s=SEC[it.sec];const url=$("#f-url").value.trim();let name=$("#f-name").value.trim();
       if(!name&&!url){toast("Укажи ссылку или название");return}if(!name)name=autoName(url);
       const sv=k=>$(`[data-seg="${k}"] .on`)?.dataset.v;const n={...it,name,url,note:$("#f-note").value.trim()};
-      if(s.cats)n.cat=$("#f-cat").value==="__new"?"":$("#f-cat").value;if(s.engines)n.engine=sv("engine")??"";if(s.env)n.env=sv("env")||"";if(s.status)n.status=sv("status");
+      const fsec=$("#f-sec");if(fsec&&fsec.value&&fsec.value!=="__newtab"&&fsec.value!==it.sec){n.sec=fsec.value;const fc=$("#f-cat");n.cat=SEC[n.sec]?.tab&&fc&&fc.value!=="__new"?fc.value:"";if(!SEC[n.sec]?.tab)delete n.cat;
+        if(isNew){}else{state.items[state.items.findIndex(i=>i.id===it.id)]=n;change();closeDlg();render();toast("Перемещено в «"+SEC[n.sec].title+"»");return}}
+      if(s.cats)n.cat=$("#f-cat")&&$("#f-cat").value!=="__new"?$("#f-cat").value:"";if(s.engines)n.engine=sv("engine")??"";if(s.env)n.env=sv("env")||"";if(s.status)n.status=sv("status");
       if(s.stack){n.gender=sv("gender")||"";for(const k of ["asr","tts","llm"])n[k]=[...document.querySelectorAll(`[data-multi="${k}"] .mopt.on`)].map(b=>b.dataset.mv)}
       if(isNew){n.id=uid();state.items.push(n)}else state.items[state.items.findIndex(i=>i.id===it.id)]=n;
       change();closeDlg();render();break}
-    case "del":if(confirm("Удалить запись?")){const delId=dlgCtx.it.id;state.docs.forEach(x=>x.projects=x.projects.filter(p=>p!==delId));state.tasks.forEach(x=>{if(x.project===delId)x.project=""});state.journal.forEach(x=>{if(x.project===delId)x.project=""});state.items=state.items.filter(i=>i.id!==delId);change();closeDlg();render()}break;
+    case "del":if(confirm("Удалить запись? Она попадёт в корзину.")){const delId=dlgCtx.it.id;const delIt=state.items.find(i=>i.id===delId);toTrash("item",delIt,trashFrom(delIt),delIt.name,delIt.sec==="projects"?{links:{docs:state.docs.filter(x=>x.projects.includes(delId)).map(x=>x.id),tasks:state.tasks.filter(x=>x.project===delId).map(x=>x.id),journal:state.journal.filter(x=>x.project===delId).map(x=>x.id)}}:null);state.docs.forEach(x=>x.projects=x.projects.filter(p=>p!==delId));state.tasks.forEach(x=>{if(x.project===delId)x.project=""});state.journal.forEach(x=>{if(x.project===delId)x.project=""});state.items=state.items.filter(i=>i.id!==delId);change();closeDlg();render()}break;
     case "vcreate":{const a=$("#mp1").value,b=$("#mp2").value;if(a.length<4){toast("Минимум 4 символа");return}if(a!==b){toast("Пароли не совпадают");return}await createVault(a);render();toast("Хранилище создано. Не забудь нажать «Сохранить»");break}
     case "vopen":try{await openVault($("#mp").value);render()}catch{toast("Неверный мастер-пароль")}break;
     case "vlock":vaultKey=null;vaultItems=null;shown.clear();render();break;
@@ -1287,6 +1379,15 @@ document.addEventListener("click",async e=>{
   }
 });
 document.addEventListener("change",async e=>{const s=e.target;
+  if(s.classList?.contains("selbox")){s.checked?selected.add(s.dataset.selid):selected.delete(s.dataset.selid);renderSelBar();return}
+  if(s.id==="f-sec"||s.id==="sel-tgt"){
+    let v=s.value;
+    if(v==="__newtab"){const id=quickNewTab(prompt("Название новой вкладки:"));if(!id){s.value=s.id==="f-sec"?(dlgCtx?.it?.sec||""):($("#selbar")?.dataset.tgt||"");return}v=id;
+      if(s.id==="f-sec"){s.innerHTML=secOptions(v,true);s.value=v;renderNav()}}
+    if(s.id==="f-sec"){$("#f-catwrap").innerHTML=SEC[v]?.tab?catSelect(SEC[v].tab,""):""}
+    else{$("#selbar").dataset.tgt=v;renderSelBar();renderNav()}
+    return}
+  if(s.id==="sel-cat"&&s.value==="__new"){const tab=SEC[s.dataset.catsel]?.tab;const id=tab&&addCategory(tab,prompt("Название новой категории:"));if(id){s.innerHTML=catOptions(tab.id,id);s.value=id}else s.value="";return}
   if(s.id==="f-cat"&&s.value==="__new"){const v=prompt("Название новой категории:");const tab=state.tabs.find(t=>t.id===s.dataset.catsel);const id=tab&&addCategory(tab,v);
     if(id){if(![...s.options].some(o=>o.value===id)){const o=document.createElement("option");o.value=id;o.textContent=v.trim();s.insertBefore(o,s.lastElementChild)}s.value=id}else s.value="";return}
   if(s.id==="pd-link"&&s.value){const doc=state.docs.find(x=>x.id===s.value);if(doc){doc.projects.push(dlgCtx.pid);change();openProjDocs(dlgCtx.pid);render();toast("Привязано")}return}
