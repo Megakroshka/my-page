@@ -316,6 +316,12 @@ body:has(.selbar) .toast,body:has(.selbar) .errbar{bottom:calc(130px + env(safe-
 .navadd{color:var(--acc)!important;opacity:1!important;border:1px dashed color-mix(in srgb,var(--acc) 45%,transparent)!important;margin:4px 0}
 @media (max-width:780px){.row.selrow{grid-template-columns:auto auto 1fr}}
 .btn.restorebtn{padding:6px 12px;font-size:13px;color:var(--acc)}
+.navord{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.nrow{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:4px 6px 4px 12px}
+.nrow .nl{flex:1}
+.nrow.issep{border-style:dashed;opacity:.7}
+.sepl{font-size:12px;color:var(--soft);letter-spacing:.05em}
+.nrow .ib:disabled{opacity:.25;cursor:default}
 /* стикеры */
 .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:22px 18px;padding:8px 2px 20px}
 .sticky{position:relative;min-height:180px;padding:22px 14px 12px;border-radius:2px 2px 14px 2px;color:#2B2620;
@@ -419,8 +425,7 @@ const BASE_SECTIONS = [
   {id:"sheets",title:"Google-таблицы",sub:"Ссылки на Google-таблицы."},
   "sep",
   {id:"notes",title:"Заметки",sub:"Быстрые записки для себя. Пиши прямо на стикере."},
-  {id:"asr",title:"ASR",sub:"Распознавание речи: сервисы, демо, документация."},
-  {id:"tts",title:"TTS",sub:"Синтез речи: сервисы, голоса, документация."},
+  {id:"asr",title:"ASR / TTS",sub:"Распознавание и синтез речи: сервисы, голоса, демо, документация.",speech:true},
   {id:"learn",title:"Обучалки",sub:"Курсы, гайды, видео."},
   {id:"apps",title:"Приложения",sub:"Программы и где их взять."},
   {id:"refs",title:"Справочники",sub:"Справочная информация."},
@@ -447,13 +452,23 @@ const NOTE_HEX={yellow:"#FFE98A",pink:"#FFC2D6",mint:"#BDF2D5",blue:"#BFE0FF",li
 let SECTIONS=[],SEC={};
 const TAB_ICONS=["heart","games","folder","sparkle","music","kb","apps","fav","notes","learn","cart","plane","refs","sites"];
 const TAB_COLORS=["#FF6B9A","#FF9F43","#FFC93D","#3DDC84","#2EF2FF","#4DA3FF","#9D6BFF","#B57CFF"];
+let SECKEYS=[];
 function rebuildSections(){
-  let tabs=[];try{tabs=(state&&state.tabs)||[]}catch{}
-  SECTIONS=[];
+  let st=null;try{st=state}catch{}
+  const tabs=(st&&st.tabs)||[];
+  const def=[];let sepN=0;
   for(const b of BASE_SECTIONS){
-    if(b==="customtabs"){for(const t of tabs)SECTIONS.push({id:t.id,title:t.title||"Без названия",sub:t.sub||"",icon:t.icon||"folder",color:t.color||"#9D6BFF",gif:t.gif,cats:true,tab:t});SECTIONS.push("addtab");continue}
-    SECTIONS.push(b);
+    if(b==="sep"){def.push(["sep:"+(++sepN),"sep"]);continue}
+    if(b==="customtabs"){for(const t of tabs)def.push([t.id,{id:t.id,title:t.title||"Без названия",sub:t.sub||"",icon:t.icon||"folder",color:t.color||"#9D6BFF",gif:t.gif,cats:true,tab:t}]);def.push(["addtab","addtab"]);continue}
+    def.push([b.id,b]);
   }
+  let order=def;const no=st&&st.navOrder;
+  if(Array.isArray(no)&&no.length){
+    const map=new Map(def);const res=no.filter((k,i)=>map.has(k)&&no.indexOf(k)===i);
+    def.forEach(([k],i)=>{if(res.includes(k))return;let j=i-1;while(j>=0&&!res.includes(def[j][0]))j--;res.splice(j<0?0:res.indexOf(def[j][0])+1,0,k)});
+    order=res.map(k=>[k,map.get(k)]);
+  }
+  SECTIONS=order.map(x=>x[1]);SECKEYS=order.map(x=>x[0]);
   SEC=Object.fromEntries(SECTIONS.filter(x=>typeof x==="object").map(x=>[x.id,x]));
 }
 const ENG_LABEL={"":"Общие","4":"Движок 4","3":"Движок 3","2":"Движок 2"};
@@ -470,8 +485,10 @@ function safeUrl(u){u=(u||"").trim();if(!u)return "";if(!/^[a-z]+:\/\//i.test(u)
 function autoName(u){try{const x=new URL(safeUrl(u));if(x.hostname.includes("docs.google.com"))return "Google-таблица";return x.hostname.replace(/^www\./,"")}catch{return ""}}
 const arr=v=>Array.isArray(v)?v.filter(Boolean):(v?[v]:[]);
 function normalize(s){s=s&&typeof s==="object"?s:{};
-  const items=(Array.isArray(s.items)?s.items:[]).map(i=>i.sec==="projects"?{...i,asr:arr(i.asr),tts:arr(i.tts),llm:arr(i.llm)}:i);
-  return {v:2,at:s.at||0,theme:s.theme||"neon",items,notes:Array.isArray(s.notes)?s.notes:[],trash:Array.isArray(s.trash)?s.trash:[],tabs:Array.isArray(s.tabs)?s.tabs.map(t=>({...t,cats:Array.isArray(t.cats)?t.cats:[]})):[{id:"games",title:"Anel",sub:"Моё: игры, сайты и всё, что захочу. Категории добавляй сама.",icon:"heart",color:"#FF6B9A",gif:12,cats:[]}],tasks:Array.isArray(s.tasks)?s.tasks:[],journal:Array.isArray(s.journal)?s.journal:[],docs:Array.isArray(s.docs)?s.docs.map(d=>({...d,projects:arr(d.projects),history:Array.isArray(d.history)?d.history:[]})):[],lists:{asr:s.lists?.asr||[],tts:s.lists?.tts||[],llm:s.lists?.llm||[]},vault:s.vault||null}}
+  const mig=i=>i&&i.sec==="tts"?{...i,sec:"asr",stype:i.stype||"tts"}:i&&i.sec==="asr"&&!i.stype?{...i,stype:"asr"}:i;
+  const items=(Array.isArray(s.items)?s.items:[]).map(i=>i.sec==="projects"?{...i,asr:arr(i.asr),tts:arr(i.tts),llm:arr(i.llm)}:mig(i));
+  if(Array.isArray(s.trash))s.trash=s.trash.map(t=>t.kind==="item"?{...t,data:mig(t.data),from:t.from==="TTS"||t.from==="ASR"?"ASR / TTS":t.from}:t);
+  return {v:2,at:s.at||0,theme:s.theme||"neon",items,notes:Array.isArray(s.notes)?s.notes:[],navOrder:Array.isArray(s.navOrder)?s.navOrder:null,trash:Array.isArray(s.trash)?s.trash:[],tabs:Array.isArray(s.tabs)?s.tabs.map(t=>({...t,cats:Array.isArray(t.cats)?t.cats:[]})):[{id:"games",title:"Anel",sub:"Моё: игры, сайты и всё, что захочу. Категории добавляй сама.",icon:"heart",color:"#FF6B9A",gif:12,cats:[]}],tasks:Array.isArray(s.tasks)?s.tasks:[],journal:Array.isArray(s.journal)?s.journal:[],docs:Array.isArray(s.docs)?s.docs.map(d=>({...d,projects:arr(d.projects),history:Array.isArray(d.history)?d.history:[]})):[],lists:{asr:s.lists?.asr||[],tts:s.lists?.tts||[],llm:s.lists?.llm||[]},vault:s.vault||null}}
 function applyTheme(){if(!state)return;document.documentElement.dataset.theme=state.theme||"neon";try{localStorage.setItem("spravochnik-theme",state.theme)}catch{}}
 
 /* ---------- GitHub ---------- */
@@ -807,7 +824,7 @@ function renderNav(){
     if(s==="addtab"){h+=`<button class="navbtn navadd" data-act="newtab"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Новая вкладка</span></button>`;continue}
     if(s.hideEmpty&&!state.items.some(i=>i.sec===s.id))continue;
     h+=`<button class="navbtn ${cur===s.id&&!query?"on":""}" data-go="${s.id}">${ico(s.icon||s.id)}<span>${esc(s.title)}</span><small>${count(s.id)}</small></button>`}
-  h+=`<div class="navfoot"><span class="sizeinfo">${fileSize?`На GitHub: ${fmtSize(fileSize)}${rawSize?` (данные ${fmtSize(rawSize)})`:""}`:""}</span><button data-act="themes">Сменить тему</button><button data-act="import">Импорт из копии</button><button data-act="cpopen">Сменить мастер-пароль</button><button data-act="glock">Заблокировать</button><button data-act="gconn">Подключение GitHub</button><button data-act="exportjson">Скачать копию .json</button></div>`;
+  h+=`<div class="navfoot"><span class="sizeinfo">${fileSize?`На GitHub: ${fmtSize(fileSize)}${rawSize?` (данные ${fmtSize(rawSize)})`:""}`:""}</span><button data-act="navorder">Порядок меню</button><button data-act="themes">Сменить тему</button><button data-act="import">Импорт из копии</button><button data-act="cpopen">Сменить мастер-пароль</button><button data-act="glock">Заблокировать</button><button data-act="gconn">Подключение GitHub</button><button data-act="exportjson">Скачать копию .json</button></div>`;
   $("#nav").innerHTML=h;
 }
 const pinFirst=(a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(a.name||"").localeCompare(b.name||"","ru");
@@ -818,6 +835,7 @@ function rowHtml(it,showSec){
   const tag=s.engines?`<div class="tag t${it.engine||0}">${it.engine||"О"}</div>`:`<div class="tag t0">${ico(s.icon||s.id,16)}</div>`;
   const nm=url?`<a class="name" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(it.name||autoName(url))}</a>`:`<span class="name">${esc(it.name)}</span>`;
   const meta=[];if(showSec)meta.push(esc(s.title));
+  if(s.speech&&it.stype)meta.push(`<span class="pchip">${stLabel(it.stype)}</span>`);
   if(it.env&&s.env)meta.push(`<span class="env ${it.env}">${it.env==="prod"?"Прод":"Тест"}</span>`);if(it.gender)meta.push(genPill(it.gender));
   if(url)meta.push(`<span class="dom">${esc(domainOf(url))}</span>`);
   if(it.note)meta.push(esc(it.note));if(it.status==="old")meta.push("старый");
@@ -852,11 +870,22 @@ function render(){
   if(focused){const q=$("#q");q.focus();q.setSelectionRange(pos,pos)}
 }
 function emptyBox(text,btn){return `<div class="empty-state">${ico(SEC[cur]?.icon||cur,34)}<div>${text}</div>${btn?`<button class="btn add" data-act="add">${btn}</button>`:""}</div>`}
+const STYPES=[["asr","ASR"],["tts","TTS"],["both","ASR и TTS"]];
+const stLabel=v=>(STYPES.find(x=>x[0]===v)||[0,""])[1];
+let spFilter="all";
 function renderSection(s){
   if(s.cats)return renderCatSection(s);
   let items=state.items.filter(i=>i.sec===s.id);
   let h=hero(s.id,s.title,s.sub);
-  if(isMovable(s.id)&&items.length)h+=`<div class="filters"><button class="chip addcat ${selMode?"on":""}" data-act="selmode">Выбрать и переместить</button></div>`;
+  if(s.speech){
+    h+=`<div class="filters"><button class="chip ${spFilter==="all"?"on":""}" data-spf="all">Все</button>${STYPES.map(([v,l])=>`<button class="chip ${spFilter===v?"on":""}" data-spf="${v}">${l}</button>`).join("")}${items.length?`<span class="gap"></span><button class="chip addcat ${selMode?"on":""}" data-act="selmode">Выбрать и переместить</button>`:""}</div>`;
+    if(!items.length)return h+emptyBox("Здесь пока пусто.","+ Добавить первую запись");
+    const groups=(spFilter==="all"?[...STYPES.map(([v,l])=>[l,items.filter(i=>i.stype===v)]),["Без типа",items.filter(i=>!STYPES.some(x=>x[0]===i.stype))]]:[["",items.filter(i=>i.stype===spFilter)]]);
+    let any=false;
+    for(const [t,list] of groups){if(!list.length)continue;any=true;h+=t?`<div class="group">${esc(t)}<span class="cnt">${list.length}</span></div>`:'<div style="height:6px"></div>';h+=`<div class="list">${list.sort(pinFirst).map(i=>rowHtml(i)).join("")}</div>`}
+    return any?h:h+emptyBox("Тут пока пусто.","+ Добавить");
+  }
+  if(!s.speech&&isMovable(s.id)&&items.length)h+=`<div class="filters"><button class="chip addcat ${selMode?"on":""}" data-act="selmode">Выбрать и переместить</button></div>`;
   if(s.engines&&s.engines.length>1){
     const opts=["all",...s.engines];
     h+=`<div class="filters">${opts.map(e=>`<button class="chip ${engFilter===e?"on":""}" data-eng="${e}">${e==="all"?"Все":ENG_LABEL[e]}</button>`).join("")}</div>`;
@@ -1109,6 +1138,16 @@ function saveJournal(){
   change();closeDlg();render();
 }
 
+/* ---------- порядок меню ---------- */
+function openNavOrder(){dlgCtx={kind:"navorder",keys:[...SECKEYS]};drawNavOrder()}
+function drawNavOrder(){
+  const k=dlgCtx.keys;
+  showDlg(`<h2>Порядок меню</h2><p style="font-size:13px;color:var(--soft);margin:0 0 12px">Двигай стрелками. Гифки и данные разделов от порядка не зависят.</p>
+  <div class="navord">${k.map((key,i)=>{const sec=SEC[key];const label=key.startsWith("sep:")?'<span class="sepl">разделитель</span>':key==="addtab"?"+ Новая вкладка (кнопка)":esc(sec?.title||key);
+    return `<div class="nrow ${key.startsWith("sep:")?"issep":""}">${sec?ico(sec.icon||sec.id,16):'<span style="width:16px"></span>'}<span class="nl">${label}</span><button type="button" class="ib" data-nup="${i}" ${i===0?"disabled":""} title="Выше">↑</button><button type="button" class="ib" data-ndown="${i}" ${i===k.length-1?"disabled":""} title="Ниже">↓</button></div>`}).join("")}</div>
+  <div class="dlgfoot"><button class="btn" data-act="navreset">Как было</button><div class="r"><button class="btn" data-act="close">Отмена</button><button class="btn primary" data-act="navsave">Сохранить</button></div></div>`,dlgCtx);
+}
+
 /* ---------- корзина ---------- */
 const TRASH_DAYS=30;
 const KIND={item:"Запись",note:"Заметка",doc:"Документ",task:"Задача",journal:"Журнал",tab:"Вкладка"};
@@ -1121,6 +1160,7 @@ function restoreTrash(tid){
   const t=state.trash.find(x=>x.tid===tid);if(!t)return;
   const d=t.data;
   if(t.kind==="item"){
+    if(d.sec==="tts"){d.sec="asr";d.stype=d.stype||"tts"}
     if(!SEC[d.sec]){const fb=state.tabs[0];if(!fb){toast("Вкладка этой записи удалена. Создай любую вкладку и попробуй снова");return}d.sec=fb.id;d.cat=""}
     const tab=SEC[d.sec]?.tab;if(tab&&d.cat&&!tab.cats.some(c=>c.id===d.cat))d.cat="";
     if(state.items.some(i=>i.id===d.id))d.id=uid();
@@ -1147,7 +1187,7 @@ function renderTrash(){
 }
 
 /* ---------- свои вкладки и категории ---------- */
-const MOVABLE_BASE=["sites","sheets","asr","tts","learn","apps","refs","scripts"];
+const MOVABLE_BASE=["sites","sheets","asr","learn","apps","refs","scripts"];
 const isMovable=id=>MOVABLE_BASE.includes(id)||!!SEC[id]?.tab;
 const moveTargets=()=>SECTIONS.filter(x=>typeof x==="object"&&isMovable(x.id)&&!(x.hideEmpty&&!state.items.some(i=>i.sec===x.id)));
 function quickNewTab(name){
@@ -1170,7 +1210,7 @@ function renderSelBar(){
 function moveSelected(){
   const tgt=$("#sel-tgt").value,catSel=$("#sel-cat");const cat=catSel&&catSel.value!=="__new"?catSel.value:"";
   if(!tgt||!selected.size)return;
-  let n=0;state.items.forEach(i=>{if(selected.has(i.id)){i.sec=tgt;if(SEC[tgt]?.tab)i.cat=cat;else delete i.cat;n++}});
+  let n=0;state.items.forEach(i=>{if(selected.has(i.id)){i.sec=tgt;if(tgt==="asr"&&!i.stype)i.stype="asr";if(SEC[tgt]?.tab)i.cat=cat;else delete i.cat;n++}});
   selected.clear();selMode=false;change();renderSelBar();const name=SEC[tgt]?.title;render();toast(`Перемещено: ${n} → ${name}`);
 }
 function renderCatSection(s){
@@ -1239,6 +1279,7 @@ function openItem(it){
     if(s.status)h+=`<label class="f">Статус<div class="seg" data-seg="status">${[["ok","Работает"],["old","Старый"]].map(([v,l])=>`<button type="button" data-v="${v}" class="${(it.status||"ok")===v?"on":""}">${l}</button>`).join("")}</div></label>`;
     h+='</div>'}
   if(s.stack)h+=`<label class="f">Голос бота<div class="seg" data-seg="gender">${[["","Не указан"],["m","♂ Мужской"],["f","♀ Женский"]].map(([v,l])=>`<button type="button" data-v="${v}" class="${(it.gender||"")===v?"on":""}">${l}</button>`).join("")}</div></label>${multiStack("asr",it.asr)}${multiStack("tts",it.tts)}${multiStack("llm",it.llm)}`;
+  if(s.speech)h+=`<label class="f">Тип<div class="seg" data-seg="stype">${STYPES.map(([v,l])=>`<button type="button" data-v="${v}" class="${(it.stype||(spFilter!=="all"?spFilter:"asr"))===v?"on":""}">${l}</button>`).join("")}</div></label>`;
   if(!isNew&&isMovable(secId))h+=`<div class="frow"><label class="f">Вкладка<select id="f-sec">${secOptions(secId,true)}</select></label><div id="f-catwrap">${s.cats?catSelect(s.tab,it.cat||""):""}</div></div>`;
   else if(s.cats)h+=`<div id="f-catwrap">${catSelect(s.tab,it.cat||(isNew&&catFilter!=="all"&&catFilter!=="none"?catFilter:""))}</div>`;
   h+=`<label class="f">Заметка<textarea id="f-note" placeholder="Для чего, клиент, с какой даты">${esc(it.note||"")}</textarea></label>
@@ -1261,11 +1302,13 @@ async function copy(t){try{await navigator.clipboard.writeText(t);toast("Ско�
 document.addEventListener("click",async e=>{
   if(!e.target.closest("button")){const kc=e.target.closest(".kcard");if(kc){openTask(state.tasks.find(x=>x.id===kc.dataset.tid));return}}
   const t=e.target.closest("button");if(!t)return;const d=t.dataset;
-  if(d.go){trashKind="all";cur=d.go;query="";catFilter="all";selMode=false;selected.clear();engFilter="all";envFilter="all";taskProj="all";jProj="all";jType="all";render();scrollTo(0,0);return}
+  if(d.go){trashKind="all";spFilter="all";cur=d.go;query="";catFilter="all";selMode=false;selected.clear();engFilter="all";envFilter="all";taskProj="all";jProj="all";jType="all";render();scrollTo(0,0);return}
   if(d.eng){engFilter=d.eng;render();return}
   if(d.gen){genFilter=d.gen;render();return}
   if(d.envf){envFilter=d.envf;render();return}
   if(d.catf){catFilter=d.catf;render();return}
+  if(d.spf){spFilter=d.spf;render();return}
+  if(d.nup!==undefined||d.ndown!==undefined){const a=dlgCtx.keys,i=+(d.nup??d.ndown),j=d.nup!==undefined?i-1:i+1;if(a[j]){[a[i],a[j]]=[a[j],a[i]];const sc=$(".dlg").scrollTop;drawNavOrder();$(".dlg").scrollTop=sc}return}
   if(d.trk){trashKind=d.trk;render();return}
   if(d.trrestore){restoreTrash(d.trrestore);return}
   if(d.trkill){const t=state.trash.find(x=>x.tid===d.trkill);if(t&&confirm(`Удалить «${t.title}» навсегда? Это не отменить.`)){state.trash=state.trash.filter(x=>x.tid!==d.trkill);change();render()}return}
@@ -1310,6 +1353,9 @@ document.addEventListener("click",async e=>{
   switch(d.act){
     case "save":saveFile();break;
     case "trempty":if(confirm(`Удалить из корзины всё (${state.trash.length}) навсегда? Это не отменить.`)){state.trash=[];change();render()}break;
+    case "navorder":openNavOrder();break;
+    case "navsave":state.navOrder=dlgCtx.keys;change();closeDlg();render();toast("Порядок меню сохранён");break;
+    case "navreset":state.navOrder=null;change();closeDlg();render();toast("Порядок как было");break;
     case "newtab":{const id=quickNewTab(prompt("Название новой вкладки:"));if(id){cur=id;catFilter="all";render();toast("Вкладка создана. Иконку, цвет и категории можно поменять в «Настроить вкладку»")}break}
     case "selmode":selMode=!selMode;selected.clear();render();break;
     case "selcancel":selMode=false;selected.clear();render();break;
@@ -1361,6 +1407,7 @@ document.addEventListener("click",async e=>{
       const sv=k=>$(`[data-seg="${k}"] .on`)?.dataset.v;const n={...it,name,url,note:$("#f-note").value.trim()};
       const fsec=$("#f-sec");if(fsec&&fsec.value&&fsec.value!=="__newtab"&&fsec.value!==it.sec){n.sec=fsec.value;const fc=$("#f-cat");n.cat=SEC[n.sec]?.tab&&fc&&fc.value!=="__new"?fc.value:"";if(!SEC[n.sec]?.tab)delete n.cat;
         if(isNew){}else{state.items[state.items.findIndex(i=>i.id===it.id)]=n;change();closeDlg();render();toast("Перемещено в «"+SEC[n.sec].title+"»");return}}
+      if(s.speech)n.stype=sv("stype")||"asr";
       if(s.cats)n.cat=$("#f-cat")&&$("#f-cat").value!=="__new"?$("#f-cat").value:"";if(s.engines)n.engine=sv("engine")??"";if(s.env)n.env=sv("env")||"";if(s.status)n.status=sv("status");
       if(s.stack){n.gender=sv("gender")||"";for(const k of ["asr","tts","llm"])n[k]=[...document.querySelectorAll(`[data-multi="${k}"] .mopt.on`)].map(b=>b.dataset.mv)}
       if(isNew){n.id=uid();state.items.push(n)}else state.items[state.items.findIndex(i=>i.id===it.id)]=n;
