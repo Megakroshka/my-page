@@ -322,6 +322,15 @@ body:has(.selbar) .toast,body:has(.selbar) .errbar{bottom:calc(130px + env(safe-
 .nrow.issep{border-style:dashed;opacity:.7}
 .sepl{font-size:12px;color:var(--soft);letter-spacing:.05em}
 .nrow .ib:disabled{opacity:.25;cursor:default}
+.vtimerbox{background:var(--panel);border:1px solid color-mix(in srgb,var(--amb) 45%,transparent);border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.vtop{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;margin-bottom:8px}
+.vtimer{font-variant-numeric:tabular-nums;color:var(--amb)}
+.vtimer.warn{color:var(--danger)}
+.vbar{height:5px;border-radius:5px;background:var(--hover);overflow:hidden}
+.vbar i{display:block;height:100%;background:var(--amb);border-radius:5px;transition:width .25s linear}
+.vbar i.warn{background:var(--danger)}
+.vnav{font-size:12px;font-weight:600}
+@media (prefers-reduced-motion:reduce){.vbar i{transition:none}}
 /* стикеры */
 .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:22px 18px;padding:8px 2px 20px}
 .sticky{position:relative;min-height:180px;padding:22px 14px 12px;border-radius:2px 2px 14px 2px;color:#2B2620;
@@ -782,6 +791,29 @@ async function saveConn(){
   cfg={...cfg,...rp,path:$("#c-path").value.trim()||"data.enc.json"};await storeCfg();closeDlg();toast("Сохранено");
 }
 
+/* ---------- таймер паролей ---------- */
+const VAULT_SECONDS=60;
+let vaultTimer=null,vaultUntil=0;
+const leftMs=()=>Math.max(0,vaultUntil-Date.now());
+const fmtLeft=()=>{const t=Math.ceil(leftMs()/1000);return Math.floor(t/60)+":"+String(t%60).padStart(2,"0")};
+const vaultPct=()=>Math.min(100,leftMs()/(VAULT_SECONDS*1000)*100);
+function startVaultTimer(){vaultUntil=Date.now()+VAULT_SECONDS*1000;clearInterval(vaultTimer);vaultTimer=setInterval(vaultTick,250)}
+function vaultTick(){
+  if(!vaultItems){clearInterval(vaultTimer);return}
+  if(leftMs()<=0){lockVault(true);return}
+  const t=fmtLeft(),warn=leftMs()<=10000;
+  document.querySelectorAll(".vtimer").forEach(e=>{e.textContent=t;e.classList.toggle("warn",warn)});
+  document.querySelectorAll(".vbar i").forEach(e=>{e.style.width=vaultPct()+"%";e.classList.toggle("warn",warn)});
+}
+function lockVault(auto){
+  clearInterval(vaultTimer);vaultTimer=null;vaultUntil=0;
+  const wasOpen=!!vaultItems;vaultKey=null;vaultItems=null;shown.clear();
+  if(dlgCtx&&dlgCtx.kind==="vault")closeDlg();
+  if(state&&!document.body.classList.contains("gated"))render();
+  if(auto&&wasOpen)toast("Пароли закрыты по таймеру");
+}
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&vaultItems)vaultTick()});
+
 /* ---------- шифрование ---------- */
 const enc=new TextEncoder(),dec=new TextDecoder();
 const b64=a=>{const u=new Uint8Array(a);let r="";for(let i=0;i<u.length;i+=0x8000)r+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(r)};
@@ -817,7 +849,7 @@ function skyline(id){
 }
 
 /* ---------- отрисовка ---------- */
-function count(id){if(id==="vault")return vaultItems?vaultItems.length:"";if(id==="trash")return state.trash.length||"";if(id==="tasks")return state.tasks.filter(t=>t.col!=="done").length||"";if(id==="journal")return state.journal.length||"";if(id==="kb")return state.docs.length||"";if(id==="fav")return state.items.filter(i=>i.starred).length||"";if(id==="notes")return state.notes.length||"";if(id==="lists")return state.lists.asr.length+state.lists.tts.length+state.lists.llm.length||"";return state.items.filter(i=>i.sec===id).length||""}
+function count(id){if(id==="vault")return vaultItems?`<span class="vnav">🔓 <span class="vtimer">${fmtLeft()}</span></span>`:"";if(id==="trash")return state.trash.length||"";if(id==="tasks")return state.tasks.filter(t=>t.col!=="done").length||"";if(id==="journal")return state.journal.length||"";if(id==="kb")return state.docs.length||"";if(id==="fav")return state.items.filter(i=>i.starred).length||"";if(id==="notes")return state.notes.length||"";if(id==="lists")return state.lists.asr.length+state.lists.tts.length+state.lists.llm.length||"";return state.items.filter(i=>i.sec===id).length||""}
 function renderNav(){
   let h=`<div class="brand">${HEART_SVG.replace('id="hg"','id="hg2"').replace("url(#hg)","url(#hg2)")}Coding girl</div>`;
   for(const s of SECTIONS){if(s==="sep"){h+='<div class="navsep"></div>';continue}
@@ -942,7 +974,7 @@ function renderVault(){
    <button class="btn primary" data-act="vcreate" style="width:100%">Создать хранилище</button></div>`;
   if(!vaultItems)return h+`<div class="lock"><h2>Пароли закрыты</h2><p>Введи мастер-пароль. После перезагрузки страницы раздел закроется сам.</p>
    <div class="f"><input type="password" id="mp" placeholder="Мастер-пароль" autocomplete="current-password"></div><button class="btn primary" data-act="vopen" style="width:100%">Открыть</button></div>`;
-  h+=`<div class="filters"><button class="chip" data-act="vlock">Закрыть пароли</button><button class="chip" data-act="vpopen">Сменить пароль раздела</button></div>`;
+  h+=`<div class="vtimerbox"><div class="vtop"><span>Закроется через <b class="vtimer">${fmtLeft()}</b></span><button class="chip" data-act="vextend">+1 мин</button></div><div class="vbar"><i style="width:${vaultPct()}%"></i></div></div><div class="filters"><button class="chip" data-act="vlock">Закрыть сейчас</button><button class="chip" data-act="vpopen">Сменить пароль раздела</button></div>`;
   if(!vaultItems.length)return h+emptyBox("Паролей пока нет.","+ Добавить пароль");
   return h+`<div class="list">${[...vaultItems].sort((a,b)=>(a.where||"").localeCompare(b.where||"","ru")).map(vaultRow).join("")}</div>`;
 }
@@ -1384,7 +1416,7 @@ document.addEventListener("click",async e=>{
     case "vpsave":changeVaultPass();break;
     case "gunlock":unlock();break;
     case "gcreate":createNew();break;
-    case "glock":if(dirty&&!confirm("Есть несохранённые изменения. Заблокировать без сохранения?"))break;dirty=false;dataKey=null;state=null;TOKEN=null;vaultKey=null;vaultItems=null;remoteBlob=null;start();break;
+    case "glock":if(dirty&&!confirm("Есть несохранённые изменения. Заблокировать без сохранения?"))break;clearInterval(vaultTimer);dirty=false;dataKey=null;state=null;TOKEN=null;vaultKey=null;vaultItems=null;remoteBlob=null;start();break;
     case "forcesave":closeDlg();saveFile(true);break;
     case "takeremote":closeDlg();dirty=false;try{localStorage.removeItem(DRAFT_KEY)}catch{}(async()=>{try{remoteBlob=await fetchRemote();state=await decryptBlob(remoteBlob,dataKey);vaultKey=null;vaultItems=null;render();toast("Загружена свежая версия")}catch(e){toast("Не получилось: "+e.message)}})();break;
     case "themes":openThemes();break;
@@ -1413,9 +1445,10 @@ document.addEventListener("click",async e=>{
       if(isNew){n.id=uid();state.items.push(n)}else state.items[state.items.findIndex(i=>i.id===it.id)]=n;
       change();closeDlg();render();break}
     case "del":if(confirm("Удалить запись? Она попадёт в корзину.")){const delId=dlgCtx.it.id;const delIt=state.items.find(i=>i.id===delId);toTrash("item",delIt,trashFrom(delIt),delIt.name,delIt.sec==="projects"?{links:{docs:state.docs.filter(x=>x.projects.includes(delId)).map(x=>x.id),tasks:state.tasks.filter(x=>x.project===delId).map(x=>x.id),journal:state.journal.filter(x=>x.project===delId).map(x=>x.id)}}:null);state.docs.forEach(x=>x.projects=x.projects.filter(p=>p!==delId));state.tasks.forEach(x=>{if(x.project===delId)x.project=""});state.journal.forEach(x=>{if(x.project===delId)x.project=""});state.items=state.items.filter(i=>i.id!==delId);change();closeDlg();render()}break;
-    case "vcreate":{const a=$("#mp1").value,b=$("#mp2").value;if(a.length<4){toast("Минимум 4 символа");return}if(a!==b){toast("Пароли не совпадают");return}await createVault(a);render();toast("Хранилище создано. Не забудь нажать «Сохранить»");break}
-    case "vopen":try{await openVault($("#mp").value);render()}catch{toast("Неверный мастер-пароль")}break;
-    case "vlock":vaultKey=null;vaultItems=null;shown.clear();render();break;
+    case "vcreate":{const a=$("#mp1").value,b=$("#mp2").value;if(a.length<4){toast("Минимум 4 символа");return}if(a!==b){toast("Пароли не совпадают");return}await createVault(a);startVaultTimer();render();toast("Хранилище создано. Не забудь нажать «Сохранить»");break}
+    case "vopen":try{await openVault($("#mp").value);startVaultTimer();render()}catch{toast("Неверный мастер-пароль")}break;
+    case "vlock":lockVault();break;
+    case "vextend":vaultUntil=Math.min(vaultUntil+60000,Date.now()+5*60000);vaultTick();toast("+1 минута");break;
     case "vsave":{const{v,isNew}=dlgCtx;const where=$("#v-where").value.trim();if(!where){toast("Укажи, где этот пароль");return}
       const n={...v,where,url:$("#v-url").value.trim(),login:$("#v-login").value,password:$("#v-pass").value,note:$("#v-note").value.trim()};
       if(isNew){n.id=uid();vaultItems.push(n)}else vaultItems[vaultItems.findIndex(x=>x.id===v.id)]=n;
