@@ -436,6 +436,25 @@ body:has(.selbar) .toast,body:has(.selbar) .errbar{bottom:calc(130px + env(safe-
 .qsw span{position:absolute;inset:0;border-radius:24px;background:var(--hover);border:1px solid var(--line);transition:background .15s}
 .qsw span::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:var(--soft);transition:transform .15s,background .15s}
 .qsw input:checked+span{background:color-mix(in srgb,var(--ac) 35%,transparent);border-color:var(--ac)}.qsw input:checked+span::after{transform:translateX(16px);background:var(--ac)}
+.sys-ava{width:62px;height:78px;flex:none;border:0;padding:0;background:radial-gradient(circle at 50% 60%,rgba(46,242,255,.18),transparent 70%);border-radius:14px;cursor:pointer}.sys-ava svg{width:100%;height:100%}
+.charwrap{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,300px);gap:16px;margin-bottom:6px}
+.charstage{position:relative;border-radius:20px;padding:10px 10px 44px;background:radial-gradient(ellipse at 50% 92%,color-mix(in srgb,var(--rk) 35%,transparent),transparent 55%),linear-gradient(180deg,rgba(20,40,90,.55),rgba(8,14,36,.75));border:1px solid color-mix(in srgb,var(--rk) 45%,transparent);display:flex;justify-content:center;overflow:hidden}
+.charstage::after{content:"";position:absolute;left:50%;bottom:30px;transform:translateX(-50%);width:62%;height:18px;border-radius:50%;background:radial-gradient(ellipse,color-mix(in srgb,var(--rk) 55%,transparent),transparent 70%)}
+.charbig{height:min(52vh,400px);width:auto;position:relative;z-index:1;filter:drop-shadow(0 8px 14px rgba(0,0,0,.35))}
+.charname{position:absolute;bottom:10px;left:0;right:0;text-align:center;font:600 14px var(--hfont);color:#E6F1FF}
+.charside{display:flex;flex-direction:column;gap:6px}
+.cpow{font-size:13px;color:var(--soft);margin-bottom:2px}.cpow b{font:700 20px var(--hfont);color:var(--ink);margin-left:6px}
+.cslot{display:grid;grid-template-columns:26px 1fr;grid-template-rows:auto auto;gap:0 8px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:7px 10px}
+.cslot.on{border-color:var(--acc)}.cs-e{grid-row:1/3;font-size:18px;align-self:center}.cs-n{font-size:11.5px;color:var(--soft)}.cs-v{font-size:13.5px;font-weight:600}
+.invgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px}
+.inv{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid color-mix(in srgb,var(--rc) 45%,var(--line));background:linear-gradient(180deg,color-mix(in srgb,var(--rc) 14%,var(--panel)),var(--panel));border-radius:14px;padding:10px 8px;text-align:center}
+.inv.on{box-shadow:0 0 0 2px var(--rc),0 0 16px color-mix(in srgb,var(--rc) 50%,transparent)}
+.inv b{font-size:13px;line-height:1.2}.inv span{font-size:11.5px;color:var(--rc)}
+.invico{width:72px;height:72px}
+.inv.locked{opacity:.45}.invq{width:72px;height:72px;display:grid;place-items:center;font:700 34px var(--hfont);color:var(--rc)}
+.invnew{position:absolute;top:6px;right:6px;font:700 10px var(--hfont);background:var(--danger);color:#fff;border-radius:6px;padding:2px 5px}
+.lookwrap{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:start}.lookprev{background:linear-gradient(180deg,rgba(20,40,90,.5),rgba(8,14,36,.7));border-radius:16px;padding:6px}.charmid{width:100%;height:auto}
+@media (max-width:780px){.charwrap{grid-template-columns:1fr}.charbig{height:min(46vh,340px)}.lookwrap{grid-template-columns:110px 1fr}.sys-ava{width:52px;height:66px}}
 .pushcard{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;background:var(--panel);border:1px dashed color-mix(in srgb,#4DA3FF 60%,transparent);border-radius:14px;padding:10px 14px;margin-bottom:12px;font-size:14px}
 .pushcard.on{border-style:solid;border-color:color-mix(in srgb,var(--prod) 50%,transparent)}
 /* система */
@@ -1622,7 +1641,7 @@ function dailyStreak(){const z=state.sys;let n=0;const d=new Date();d.setHours(1
 function addXp(n,why,area){
   const z=state.sys,before=lvlInfo(z.xp).lvl;z.xp=Math.max(0,z.xp+n);if(area&&n>0)z.stats[area]=(z.stats[area]||0)+n;if(area&&n<0)z.stats[area]=Math.max(0,(z.stats[area]||0)+n);
   z.log.unshift({at:Date.now(),xp:n,why});z.log=z.log.slice(0,60);
-  const after=lvlInfo(z.xp).lvl;if(after>before)sysPopup(`🎉 Новый уровень: ${after}`,rankOf(after)[1]!==rankOf(before)[1]?`Ранг повышен до ${rankOf(after)[1]}! Так держать, охотница.`:"Ты стала сильнее.");
+  const after=lvlInfo(z.xp).lvl;if(after>before&&!z.awarded[`lvl:${after}`]){z.awarded[`lvl:${after}`]=1;setTimeout(()=>{rollLoot(1);change()},1500)}if(after>before)sysPopup(`🎉 Новый уровень: ${after}`,rankOf(after)[1]!==rankOf(before)[1]?`Ранг повышен до ${rankOf(after)[1]}! Так держать, охотница.`:"Ты стала сильнее.");
   checkAch();
 }
 function award(key,n,why,area){const z=state.sys;if(z.awarded[key])return;z.awarded[key]=n;addXp(n,why,area)}
@@ -1640,9 +1659,9 @@ function showPop(){if(!popQ.length)return;const [t,x]=popQ[0];let el=$("#syspop"
 function toggleQuest(id){
   const z=state.sys,q=z.quests.find(x=>x.id===id),t=todayStr();if(!q)return;q.done=q.done||{};
   if(q.done[t]){delete q.done[t];unaward(`q:${id}:${t}`,"Отмена: "+q.title,q.area)}
-  else{q.done[t]=1;award(`q:${id}:${t}`,q.xp,q.title,q.area);const a=z.areasDay[t]||(z.areasDay[t]=[]);if(!a.includes(q.area))a.push(q.area)}
+  else{q.done[t]=1;award(`q:${id}:${t}`,q.xp,q.title,q.area);if(!z.awarded[`l:${id}:${t}`]){z.awarded[`l:${id}:${t}`]=1;if(Math.random()<Math.min(.45,.1+q.xp/150))setTimeout(()=>{rollLoot(0);change();if(cur==="system")render()},900)}const a=z.areasDay[t]||(z.areasDay[t]=[]);if(!a.includes(q.area))a.push(q.area)}
   const dd=dailyState();
-  if(dd.all&&dd.done===dd.all&&!z.daily.claimed){z.daily.claimed=true;z.dailyDone[t]=1;award(`daily:${t}`,30+Math.min(dailyStreak(),10)*3,"Задание дня выполнено","mind");sysPopup("✅ Задание дня выполнено",`+${30+Math.min(dailyStreak(),10)*3} опыта. Серия: ${dailyStreak()} дн.`)}
+  if(dd.all&&dd.done===dd.all&&!z.daily.claimed){z.daily.claimed=true;z.dailyDone[t]=1;award(`daily:${t}`,30+Math.min(dailyStreak(),10)*3,"Задание дня выполнено","mind");sysPopup("✅ Задание дня выполнено",`+${30+Math.min(dailyStreak(),10)*3} опыта. Серия: ${dailyStreak()} дн.`);if(!z.awarded[`chest:${t}`]){z.awarded[`chest:${t}`]=1;setTimeout(()=>{rollLoot(1);change();if(cur==="system")render()},1200)}}
   else if(dd.done<dd.all&&z.daily.claimed){z.daily.claimed=false;delete z.dailyDone[t];unaward(`daily:${t}`,"Отмена задания дня","mind")}
   checkAch();change();render();
 }
@@ -1657,14 +1676,14 @@ function sysHook(kind,key,on){try{const z=sysInit();const t=todayStr();
 let sysTab="today",deck=null,showRest=false;
 function renderSystem(){
   const z=sysInit();pickDaily();const li=lvlInfo(z.xp),rk=rankOf(li.lvl),[mt,mx]=sysMsg();
-  let h=`<div class="sysbox"><div class="sys-top"><div class="sys-rank" style="--rk:${rk[2]}">${rk[1]}</div><div class="sys-main"><div class="sys-lvl">Уровень ${li.lvl}<span>${z.title?esc(z.title):"Охотница"}</span></div>
+  charInit();let h=`<div class="sysbox"><div class="sys-top"><button class="sys-ava" data-systab="char" title="Персонаж">${charSvg(z.eq,lookOf(),"")}</button><div class="sys-rank" style="--rk:${rk[2]}">${rk[1]}</div><div class="sys-main"><div class="sys-lvl">Уровень ${li.lvl}<span>${z.title?esc(z.title):"Охотница"}</span></div>
    <div class="sys-xpbar"><i style="width:${li.cur/li.need*100}%"></i></div><div class="sys-xp">${li.cur} / ${li.need} опыта · всего ${z.xp}</div></div>
    <div class="sys-streak"><b>${dailyStreak()}</b><span>🔥 дней</span></div></div>
    <div class="sys-msg"><b>${esc(mt)}</b><span>${esc(mx)}</span></div>
    <div class="sys-stats">${Object.entries(AREAS).filter(([k])=>k!=="fun").map(([k,a])=>{const v=z.stats[k]||0,lv=Math.floor(Math.sqrt(v/10));return `<div class="sst"><span>${a.e} ${a.n}</span><b>${lv}</b><div class="sst-bar"><i style="width:${Math.min(100,(Math.sqrt(v/10)-lv)*100)}%;background:${a.c}"></i></div></div>`}).join("")}</div></div>`;
   h+=pushCard();
-  h+=`<div class="filters systabs">${[["today","Сегодня"],["deck","Новые задания"],["mine","Мои задания"],["ach","Достижения"],["log","История"]].map(([v,l])=>`<button class="chip ${sysTab===v?"on":""}" data-systab="${v}">${l}</button>`).join("")}</div>`;
-  if(sysTab==="today")h+=sysToday();else if(sysTab==="deck")h+=sysDeck();else if(sysTab==="mine")h+=sysMine();else if(sysTab==="ach")h+=sysAch();else h+=sysLog();
+  h+=`<div class="filters systabs">${[["today","Сегодня"],["char","Персонаж"],["deck","Новые задания"],["mine","Мои задания"],["ach","Достижения"],["log","История"]].map(([v,l])=>`<button class="chip ${sysTab===v?"on":""}" data-systab="${v}">${l}</button>`).join("")}</div>`;
+  if(sysTab==="char")h+=sysChar();else if(sysTab==="today")h+=sysToday();else if(sysTab==="deck")h+=sysDeck();else if(sysTab==="mine")h+=sysMine();else if(sysTab==="ach")h+=sysAch();else h+=sysLog();
   return h;
 }
 function qRow(q,daily){
@@ -1741,6 +1760,116 @@ async function writeActivity(){
 }
 function sysOnEnter(){const z=sysInit();const gap=z.lastVisit?(Date.now()-z.lastVisit)/864e5:0;if(gap>=3){z.comeback++;setTimeout(()=>sysPopup("🦋 С возвращением!",`Тебя не было ${Math.floor(gap)} дн. Система рада тебе. Начнём с малого?`),600)}
   const before=z.lastVisit;z.lastVisit=Date.now();if(!before||new Date(before).toDateString()!==new Date().toDateString())change();pickDaily();checkAch()}
+
+/* ---------- ПЕРСОНАЖ и лут ---------- */
+const RAR={c:{n:"обычный",c:"#9AA3B5",p:1},r:{n:"редкий",c:"#4DA3FF",p:3},e:{n:"эпический",c:"#B57CFF",p:6},l:{n:"легендарный",c:"#FFC93D",p:10}};
+const SLOTS={head:{n:"Голова",e:"👑",box:"40 8 120 92"},body:{n:"Одежда",e:"🛡️",box:"48 118 104 156"},hands:{n:"Руки",e:"🧤",box:"44 172 112 52"},feet:{n:"Ноги",e:"👢",box:"62 226 76 70"},weapon:{n:"Оружие",e:"⚔️",box:"118 80 80 190"},acc:{n:"Аксессуар",e:"🪽",box:"14 92 172 186"},aura:{n:"Аура",e:"🌟",box:"0 0 200 300"}};
+const ITEMS={
+ band:{s:"head",r:"c",n:"Повязка новичка",svg:'<path d="M54 70 Q100 56 146 70 L146 78 Q100 64 54 78Z" fill="#7C8BA6"/><path d="M144 71 l17 7 -4 5 -14-6Z M144 75 l12 14 -5 2 -9-12Z" fill="#6A7894"/>'},
+ sakura:{s:"head",r:"c",n:"Заколка-сакура",svg:'<g transform="translate(134 58)"><g fill="#FFB3D1">'+[0,72,144,216,288].map(a=>`<ellipse cx="0" cy="-7" rx="5" ry="7" transform="rotate(${a})"/>`).join("")+'</g><circle r="3.5" fill="#FFD84D"/></g>'},
+ cat:{s:"head",r:"r",n:"Кошачьи ушки",svg:'<path d="M60 60 L64 22 L90 46Z" fill="#3A2E48"/><path d="M66 52 L68 32 L82 46Z" fill="#FF9FC2"/><path d="M140 60 L136 22 L110 46Z" fill="#3A2E48"/><path d="M134 52 L132 32 L118 46Z" fill="#FF9FC2"/>'},
+ helm:{s:"head",r:"r",n:"Шлем стража",svg:'<path d="M50 84 Q48 32 100 28 Q152 32 150 84 L141 84 Q139 50 100 46 Q61 50 59 84Z" fill="#9FB1C6" stroke="#5B6B7D" stroke-width="2"/><path d="M100 28 V46" stroke="#5B6B7D" stroke-width="3"/><path d="M98 28 Q98 6 116 10 Q106 16 106 30Z" fill="#D3263A"/>'},
+ moon:{s:"head",r:"e",n:"Обруч луны",svg:'<path d="M56 70 Q100 50 144 70" fill="none" stroke="#C9B6FF" stroke-width="4" stroke-linecap="round"/><path d="M100 40 a11 11 0 1 0 9 18 a9 9 0 1 1 -9 -18Z" fill="#F1E9FF" stroke="#9D6BFF" stroke-width="1.5"/><circle cx="100" cy="51" r="16" fill="#B57CFF" opacity=".18"/>'},
+ crown:{s:"head",r:"l",n:"Корона охотницы",svg:'<circle cx="100" cy="40" r="30" fill="#FFD24D" opacity=".15"/><path d="M66 56 L70 26 L84 44 L100 18 L116 44 L130 26 L134 56Z" fill="#FFD24D" stroke="#C99A00" stroke-width="2" stroke-linejoin="round"/><circle cx="100" cy="42" r="4.5" fill="#D3263A"/><circle cx="80" cy="49" r="3" fill="#4DA3FF"/><circle cx="120" cy="49" r="3" fill="#3DDC84"/>'},
+ jacket:{s:"body",r:"c",n:"Куртка ученицы",svg:'<path d="M72 140 Q100 130 128 140 L134 198 L66 198Z" fill="#5B7DB1"/><path d="M91 134 L100 158 L109 134" fill="#fff"/><path d="M100 158 V198" stroke="#3E5C8C" stroke-width="2"/><circle cx="105" cy="168" r="2" fill="#E8EEF7"/><circle cx="105" cy="182" r="2" fill="#E8EEF7"/>'},
+ hoodie:{s:"body",r:"c",n:"Спортивный костюм",svg:'<path d="M70 140 Q100 128 130 140 L134 202 L66 202Z" fill="#FF6B9A"/><path d="M86 136 Q100 152 114 136" fill="none" stroke="#fff" stroke-width="3"/><path d="M94 146 v14 M106 146 v14" stroke="#fff" stroke-width="2"/><rect x="84" y="178" width="32" height="14" rx="5" fill="#E85A88"/>'},
+ leather:{s:"body",r:"r",n:"Кожаный доспех",svg:'<path d="M72 140 Q100 130 128 140 L132 202 L68 202Z" fill="#8B5A3C"/><path d="M73 150 L127 188 M127 150 L73 188" stroke="#5E3B26" stroke-width="5"/><circle cx="100" cy="169" r="7" fill="#C9A27E" stroke="#5E3B26" stroke-width="2"/>'},
+ kimono:{s:"body",r:"e",n:"Кимоно ночи",svg:'<path d="M68 140 Q100 128 132 140 L140 252 Q100 260 60 252Z" fill="#2C2459"/><path d="M88 134 L112 204 M112 134 L97 172" stroke="#E9DDFF" stroke-width="3" fill="none"/><rect x="68" y="184" width="64" height="15" fill="#D3263A"/><g fill="#FFB3D1" opacity=".85"><circle cx="80" cy="224" r="3"/><circle cx="121" cy="236" r="3"/><circle cx="104" cy="216" r="2.5"/><circle cx="88" cy="244" r="2.5"/></g>'},
+ robe:{s:"body",r:"e",n:"Мантия мага",svg:'<path d="M70 140 Q100 128 130 140 L144 264 Q100 274 56 264Z" fill="#5B3AA8"/><path d="M100 134 V268" stroke="#FFD24D" stroke-width="3"/><path d="M56 264 Q100 274 144 264" fill="none" stroke="#FFD24D" stroke-width="4"/><path d="M84 136 L100 160 L116 136" fill="none" stroke="#FFD24D" stroke-width="3"/><g fill="#FFD24D"><circle cx="82" cy="230" r="2"/><circle cx="118" cy="214" r="2"/><circle cx="114" cy="248" r="1.6"/></g>'},
+ plate:{s:"body",r:"l",n:"Латы рассвета",svg:'<path d="M70 140 Q100 128 130 140 L132 202 L68 202Z" fill="#DCE2EC" stroke="#8A93A6" stroke-width="2"/><path d="M100 140 V200" stroke="#8A93A6" stroke-width="2"/><path d="M84 160 Q100 148 116 160 Q100 190 84 160Z" fill="#FFD24D" stroke="#C99A00" stroke-width="2"/>',top:'<ellipse cx="72" cy="146" rx="14" ry="10" fill="#FFD24D" stroke="#C99A00" stroke-width="2"/><ellipse cx="128" cy="146" rx="14" ry="10" fill="#FFD24D" stroke="#C99A00" stroke-width="2"/>'},
+ wraps:{s:"hands",r:"c",n:"Бинты",svg:'<g fill="#F4F1EA" stroke="#CFC8B8"><rect x="56" y="190" width="16" height="17" rx="6"/><rect x="128" y="190" width="16" height="17" rx="6"/></g><path d="M57 196 h14 M57 201 h14 M129 196 h14 M129 201 h14" stroke="#CFC8B8"/>'},
+ gloves:{s:"hands",r:"r",n:"Перчатки следопыта",svg:'<g fill="#7A4B2A"><rect x="55" y="186" width="18" height="22" rx="7"/><rect x="127" y="186" width="18" height="22" rx="7"/></g><g fill="#C9A27E"><rect x="55" y="186" width="18" height="5" rx="2"/><rect x="127" y="186" width="18" height="5" rx="2"/></g>'},
+ bracers:{s:"hands",r:"e",n:"Наручи света",svg:'<g fill="#1E3A5F" stroke="#2EF2FF" stroke-width="2"><rect x="55" y="178" width="18" height="16" rx="4"/><rect x="127" y="178" width="18" height="16" rx="4"/></g><g fill="#2EF2FF"><circle cx="64" cy="186" r="3"/><circle cx="136" cy="186" r="3"/></g><g fill="#2EF2FF" opacity=".25"><circle cx="64" cy="186" r="10"/><circle cx="136" cy="186" r="10"/></g>'},
+ claws:{s:"hands",r:"l",n:"Когти дракона",svg:'<g fill="#FFD24D" stroke="#C99A00" stroke-width="2"><rect x="54" y="178" width="20" height="30" rx="6"/><rect x="126" y="178" width="20" height="30" rx="6"/></g><path d="M56 207 l-3 9 6-4Z M64 209 l0 10 4-8Z M72 207 l3 9 -6-4Z M128 207 l-3 9 6-4Z M136 209 l0 10 4-8Z M144 207 l3 9 -6-4Z" fill="#C99A00"/>'},
+ sneakers:{s:"feet",r:"c",n:"Кеды",svg:'<g fill="#fff" stroke="#B9C2D0" stroke-width="1.5"><rect x="76" y="270" width="24" height="18" rx="7"/><rect x="100" y="270" width="24" height="18" rx="7"/></g><rect x="76" y="283" width="24" height="5" rx="2" fill="#FF6B9A"/><rect x="100" y="283" width="24" height="5" rx="2" fill="#FF6B9A"/>'},
+ boots:{s:"feet",r:"r",n:"Сапоги странницы",svg:'<g fill="#7A4B2A"><rect x="79" y="236" width="20" height="52" rx="8"/><rect x="101" y="236" width="20" height="52" rx="8"/></g><g fill="#A8754D"><rect x="77" y="234" width="24" height="9" rx="4"/><rect x="99" y="234" width="24" height="9" rx="4"/></g>'},
+ greaves:{s:"feet",r:"e",n:"Поножи стража",svg:'<g fill="#C7D0DD" stroke="#7D8899" stroke-width="2"><rect x="79" y="228" width="20" height="60" rx="7"/><rect x="101" y="228" width="20" height="60" rx="7"/></g><g fill="#9D6BFF"><circle cx="89" cy="244" r="4"/><circle cx="111" cy="244" r="4"/></g>'},
+ winged:{s:"feet",r:"l",n:"Крылатые сандалии",svg:'<g fill="#FFD24D" stroke="#C99A00" stroke-width="1.5"><rect x="76" y="272" width="24" height="16" rx="6"/><rect x="100" y="272" width="24" height="16" rx="6"/></g><g fill="#fff" stroke="#E0C36A"><path d="M78 272 Q62 262 64 252 Q72 262 82 266Z"/><path d="M122 272 Q138 262 136 252 Q128 262 118 266Z"/></g>'},
+ wsword:{s:"weapon",r:"c",n:"Деревянный меч",svg:'<path d="M139 200 L171 120 L178 123 L147 203Z" fill="#D7B48A" stroke="#9B7550" stroke-width="1.5"/><path d="M129 194 L155 206" stroke="#7A4B2A" stroke-width="6" stroke-linecap="round"/>'},
+ coffee:{s:"weapon",r:"c",n:"Кружка кофе",svg:'<rect x="137" y="186" width="20" height="22" rx="4" fill="#fff" stroke="#C9B9A6" stroke-width="1.5"/><path d="M157 191 h4 a5 5 0 0 1 0 10 h-4" fill="none" stroke="#C9B9A6" stroke-width="2.5"/><rect x="137" y="190" width="20" height="5" fill="#FF8FB1"/><path d="M143 180 q-3 -5 0 -9 M151 180 q-3 -5 0 -9" stroke="#C9B9A6" stroke-width="2" fill="none" stroke-linecap="round"/>'},
+ dagger:{s:"weapon",r:"r",n:"Кинжал тени",svg:'<path d="M141 198 L163 156 L168 159 L148 201Z" fill="#4A3A6B" stroke="#B57CFF" stroke-width="1.5"/><path d="M132 194 L154 205" stroke="#2B2233" stroke-width="5" stroke-linecap="round"/>'},
+ staff:{s:"weapon",r:"e",n:"Посох звёзд",svg:'<path d="M134 256 L152 104" stroke="#8B5A3C" stroke-width="5" stroke-linecap="round"/><circle cx="153" cy="96" r="18" fill="#FFD24D" opacity=".25"/><path d="M153 80 l4 10 11 1 -8 7 3 11 -10-6 -10 6 3-11 -8-7 11-1Z" fill="#FFD24D" stroke="#C99A00" stroke-width="1.5"/>'},
+ pen:{s:"weapon",r:"e",n:"Перо дизайнера",svg:'<path d="M140 206 L176 108 L187 112 L151 210Z" fill="#9D6BFF"/><path d="M176 108 L186 94 L187 112Z" fill="#2B2620"/><path d="M168 130 L179 134" stroke="#FFD24D" stroke-width="5"/><circle cx="186" cy="96" r="10" fill="#FF8FD8" opacity=".3"/>'},
+ dawn:{s:"weapon",r:"l",n:"Клинок рассвета",svg:'<path d="M138 202 L180 84 L192 89 L150 207Z" fill="#2EF2FF" opacity=".25" transform="translate(-2 0) scale(1.02)"/><path d="M138 200 L179 86 L189 90 L148 205Z" fill="#EAF6FF" stroke="#2EF2FF" stroke-width="2"/><path d="M126 192 L158 206" stroke="#FFD24D" stroke-width="7" stroke-linecap="round"/><circle cx="142" cy="199" r="4" fill="#D3263A"/>'},
+ cape:{s:"acc",r:"c",n:"Плащ путника",back:1,svg:'<path d="M70 138 Q100 130 130 138 L152 264 Q100 276 48 264Z" fill="#6B4E8E"/>'},
+ scarf:{s:"acc",r:"r",n:"Красный шарф",neck:1,svg:'<path d="M80 130 Q100 144 120 130 L123 142 Q100 158 77 142Z" fill="#D3263A"/><path d="M110 142 l8 32 -9 2 -5-32Z" fill="#B81F33"/>'},
+ fairy:{s:"acc",r:"e",n:"Крылья феи",back:1,svg:'<g fill="#B9F0FF" opacity=".75" stroke="#7FD8F0" stroke-width="1.5"><path d="M92 152 Q36 92 22 146 Q30 192 92 172Z"/><path d="M90 176 Q40 196 48 226 Q74 228 94 184Z"/></g><g transform="translate(200 0) scale(-1 1)" fill="#B9F0FF" opacity=".75" stroke="#7FD8F0" stroke-width="1.5"><path d="M92 152 Q36 92 22 146 Q30 192 92 172Z"/><path d="M90 176 Q40 196 48 226 Q74 228 94 184Z"/></g>'},
+ phoenix:{s:"acc",r:"l",n:"Крылья феникса",back:1,svg:'<defs><linearGradient id="phx" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFD24D"/><stop offset=".5" stop-color="#FF7A3D"/><stop offset="1" stop-color="#D3263A"/></linearGradient></defs><g fill="url(#phx)"><path d="M94 150 Q40 70 8 120 Q30 120 24 140 Q44 136 34 160 Q56 154 48 180 Q72 170 94 172Z"/><g transform="translate(200 0) scale(-1 1)"><path d="M94 150 Q40 70 8 120 Q30 120 24 140 Q44 136 34 160 Q56 154 48 180 Q72 170 94 172Z"/></g></g>'},
+ sparks:{s:"aura",r:"c",n:"Искорки",svg:'<g fill="#FFE58A">'+[[30,80],[170,70],[22,190],[178,200],[52,40],[150,30],[40,250],[165,250]].map(([x,y])=>`<path d="M${x} ${y-6} l2 4 4 2 -4 2 -2 4 -2-4 -4-2 4-2Z"/>`).join("")+'</g>'},
+ blueflame:{s:"aura",r:"r",n:"Синее пламя",svg:'<defs><radialGradient id="bfl" cx=".5" cy=".55" r=".5"><stop offset="0" stop-color="#4DA3FF" stop-opacity=".55"/><stop offset="1" stop-color="#4DA3FF" stop-opacity="0"/></radialGradient></defs><ellipse cx="100" cy="160" rx="96" ry="140" fill="url(#bfl)"/><g fill="#7FC4FF" opacity=".7"><path d="M40 296 Q30 260 48 236 Q46 262 60 270 Q58 250 70 238 Q72 270 64 296Z"/><path d="M160 296 Q170 260 152 236 Q154 262 140 270 Q142 250 130 238 Q128 270 136 296Z"/></g>'},
+ petals:{s:"aura",r:"e",n:"Лепестки сакуры",svg:'<g fill="#FFB3D1" opacity=".9">'+[[24,60,20],[176,90,-30],[30,170,40],[172,190,10],[60,24,-20],[150,40,60],[18,240,30],[184,260,-40],[44,120,70],[160,140,-60]].map(([x,y,r])=>`<ellipse cx="${x}" cy="${y}" rx="6" ry="3.5" transform="rotate(${r} ${x} ${y})"/>`).join("")+'</g>'},
+ golden:{s:"aura",r:"l",n:"Золотое сияние",svg:'<defs><radialGradient id="gld" cx=".5" cy=".45" r=".5"><stop offset="0" stop-color="#FFD24D" stop-opacity=".6"/><stop offset="1" stop-color="#FFD24D" stop-opacity="0"/></radialGradient></defs><g stroke="#FFE58A" stroke-width="3" opacity=".45">'+Array.from({length:12},(_,i)=>{const a=i*Math.PI/6;return `<line x1="${100+60*Math.cos(a)}" y1="${140+60*Math.sin(a)}" x2="${100+110*Math.cos(a)}" y2="${140+110*Math.sin(a)}"/>`}).join("")+'</g><ellipse cx="100" cy="140" rx="100" ry="130" fill="url(#gld)"/>'}
+};
+const SKINS=["#FFE3D3","#F8D0B0","#E8B48C","#C98E64","#8D5A3B"];
+const HAIRS=["#2B2233","#5A3A2E","#C68B59","#F2D27A","#F7A8C8","#9D6BFF","#4DA3FF","#EDEDED"];
+const EYES=["#6B3FA0","#3A7BD5","#2E8B57","#B5651D","#D3263A","#1A1A1A"];
+const HSTYLES={long:"Длинные",bob:"Каре",pony:"Хвостик"};
+function lookOf(){const z=state.sys;return z.look=z.look||{skin:SKINS[0],hair:HAIRS[0],eyes:EYES[0],style:"long"}}
+function eye(cx,col,flip){return `<ellipse cx="${cx}" cy="95" rx="8.5" ry="10.5" fill="#fff"/><ellipse cx="${cx}" cy="96.5" rx="7" ry="9" fill="${col}"/><ellipse cx="${cx}" cy="98" rx="3.6" ry="5" fill="#1A1020"/><circle cx="${cx-2.5}" cy="92" r="2.6" fill="#fff"/><circle cx="${cx+2.5}" cy="100.5" r="1.2" fill="#fff" opacity=".8"/><path d="M${cx-10} 88 Q${cx} 81 ${cx+10} 88" stroke="#2A1A2E" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M${flip?cx+9:cx-9} 88 l${flip?5:-5} -3" stroke="#2A1A2E" stroke-width="2" stroke-linecap="round"/>`}
+function charSvg(eq,look,cls,only){
+  const L=look,it=s=>eq[s]&&ITEMS[eq[s]]?ITEMS[eq[s]]:null;
+  const back={long:"M50 80 Q44 160 60 212 Q100 224 140 212 Q156 160 150 80Z",bob:"M50 80 Q46 126 60 138 Q100 142 140 138 Q154 126 150 80Z",pony:"M50 80 Q46 120 60 130 Q100 134 140 130 Q154 120 150 80Z"}[L.style]||"";
+  const pony=L.style==="pony"?`<path d="M138 56 Q182 72 172 150 Q164 182 148 190 Q162 140 140 96Z" fill="${L.hair}"/>`:"";
+  const acc=it("acc"),body=it("body"),hands=it("hands"),feet=it("feet"),wpn=it("weapon"),head=it("head"),aura=it("aura");
+  if(only){const x=ITEMS[only];return `<svg viewBox="${SLOTS[x.s].box}" class="${cls||""}">${x.svg}${x.top||""}</svg>`}
+  return `<svg viewBox="0 0 200 300" class="${cls||""}">${aura?aura.svg:""}${acc&&acc.back?acc.svg:""}
+  <path d="${back}" fill="${L.hair}"/>${pony}
+  <rect x="82" y="200" width="15" height="84" rx="7" fill="${L.skin}"/><rect x="103" y="200" width="15" height="84" rx="7" fill="${L.skin}"/>
+  ${feet?feet.svg:`<g fill="#3A2E48"><rect x="78" y="276" width="21" height="13" rx="6"/><rect x="101" y="276" width="21" height="13" rx="6"/></g>`}
+  <path d="M74 140 Q100 132 126 140 L130 192 L70 192Z" fill="#FFFFFF"/><path d="M68 186 L132 186 L142 226 Q100 236 58 226Z" fill="#2E3A66"/><path d="M92 136 L100 148 L108 136" fill="#FF8FB1"/>
+  ${body?body.svg:""}
+  <path d="M76 146 Q60 172 64 198" stroke="${L.skin}" stroke-width="12" fill="none" stroke-linecap="round"/><path d="M124 146 Q140 172 136 198" stroke="${L.skin}" stroke-width="12" fill="none" stroke-linecap="round"/>
+  ${body&&body.top?body.top:""}
+  ${hands?hands.svg:`<circle cx="64" cy="200" r="7.5" fill="${L.skin}"/><circle cx="136" cy="200" r="7.5" fill="${L.skin}"/>`}
+  ${wpn?wpn.svg:""}
+  <rect x="93" y="122" width="14" height="18" rx="4" fill="${L.skin}"/>${acc&&acc.neck?acc.svg:""}
+  <ellipse cx="100" cy="88" rx="46" ry="44" fill="${L.skin}"/>
+  ${eye(82,L.eyes,false)}${eye(118,L.eyes,true)}
+  <path d="M75 79 Q82 75 89 79 M111 79 Q118 75 125 79" stroke="${L.hair}" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <ellipse cx="72" cy="108" rx="7" ry="4" fill="#FF8FB1" opacity=".45"/><ellipse cx="128" cy="108" rx="7" ry="4" fill="#FF8FB1" opacity=".45"/>
+  <path d="M95 113 Q100 117.5 105 113" stroke="#B5475E" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M52 92 Q50 36 100 32 Q150 36 148 92 Q142 70 128 62 Q122 80 106 70 Q98 84 86 68 Q72 74 60 96Z" fill="${L.hair}"/>
+  ${L.style!=="pony"?`<path d="M53 84 Q46 118 56 142 L64 96Z" fill="${L.hair}"/><path d="M147 84 Q154 118 144 142 L136 96Z" fill="${L.hair}"/>`:""}
+  <path d="M72 48 Q86 40 98 44" stroke="#fff" stroke-width="3" opacity=".25" fill="none" stroke-linecap="round"/>
+  ${head?head.svg:""}</svg>`;
+}
+function charInit(){const z=sysInit();z.inv=z.inv||{};z.eq=z.eq||{};lookOf();if(!Object.keys(z.inv).length){z.inv.band=Date.now();z.inv.sneakers=Date.now();z.eq.head="band";z.eq.feet="sneakers"}return z}
+const gearPower=()=>Object.values(state.sys.eq||{}).reduce((a,id)=>a+(ITEMS[id]?RAR[ITEMS[id].r].p:0),0);
+function rollLoot(boost){
+  const z=charInit(),lv=lvlInfo(z.xp).lvl;
+  const w={c:Math.max(20,60-lv*1.2-boost*15),r:28+boost*5,e:9+lv*0.6+boost*7,l:2+lv*0.25+boost*3};
+  let x=Math.random()*(w.c+w.r+w.e+w.l),rar="c";for(const k of ["c","r","e","l"]){if(x<w[k]){rar=k;break}x-=w[k]}
+  const ids=Object.keys(ITEMS).filter(id=>ITEMS[id].r===rar),fresh=ids.filter(id=>!z.inv[id]);
+  const id=(fresh.length?fresh:ids)[Math.floor(Math.random()*(fresh.length?fresh:ids).length)];
+  if(z.inv[id]){const bonus={c:5,r:10,e:20,l:40}[rar];addXp(bonus,"Повтор предмета: "+ITEMS[id].n);sysPopup(`🎁 ${ITEMS[id].n} (повтор)`,`Уже есть — превратился в +${bonus} опыта`);return}
+  z.inv[id]=Date.now();z.newItems=(z.newItems||[]).concat(id);
+  sysPopup(`🎁 Выпал предмет: ${ITEMS[id].n}`,`${RAR[rar].n[0].toUpperCase()+RAR[rar].n.slice(1)} · ${SLOTS[ITEMS[id].s].n}. Загляни в «Персонаж»`);
+}
+let charSlot="all";
+function sysChar(){
+  const z=charInit(),L=lookOf(),own=Object.keys(z.inv),li=lvlInfo(z.xp),rk=rankOf(li.lvl);
+  let h=`<div class="charwrap"><div class="charstage" style="--rk:${rk[2]}">${charSvg(z.eq,L,"charbig")}<div class="charname">${esc(z.title||"Охотница")} · ${rk[1]}-ранг</div></div>
+  <div class="charside"><div class="cpow">Сила снаряжения <b>${gearPower()}</b></div>
+  ${Object.entries(SLOTS).map(([k,s])=>{const id=z.eq[k],x=id&&ITEMS[id];return `<button class="cslot ${charSlot===k?"on":""}" data-cslot="${k}"><span class="cs-e">${s.e}</span><span class="cs-n">${s.n}</span><span class="cs-v" style="color:${x?RAR[x.r].c:"var(--soft)"}">${x?esc(x.n):"пусто"}</span></button>`}).join("")}
+  <button class="btn" data-act="charlook" style="width:100%;margin-top:8px">💇‍♀️ Внешность</button></div></div>`;
+  const list=Object.entries(ITEMS).filter(([id,x])=>charSlot==="all"||x.s===charSlot);
+  h+=`<div class="group">Инвентарь<span class="cnt">${own.length}/${Object.keys(ITEMS).length}</span>${charSlot!=="all"?`<button class="lnk" data-cslot="all" style="margin-left:6px">показать всё</button>`:""}</div>
+  <p class="sub" style="margin:0 0 10px">Предметы выпадают за задания: чем сложнее задание и выше уровень, тем реже и круче лут. За задание дня и новый уровень — гарантированный сундук.</p>
+  <div class="invgrid">${list.sort((a,b)=>RAR[b[1].r].p-RAR[a[1].r].p).map(([id,x])=>{const has=z.inv[id],on=z.eq[x.s]===id,nw=(z.newItems||[]).includes(id);
+    return has?`<button class="inv ${on?"on":""}" style="--rc:${RAR[x.r].c}" data-equip="${id}">${nw?'<span class="invnew">NEW</span>':""}${charSvg({},L,"invico",id)}<b>${esc(x.n)}</b><span>${RAR[x.r].n}${on?" · надето":""}</span></button>`
+    :`<div class="inv locked" style="--rc:${RAR[x.r].c}"><div class="invq">?</div><b>???</b><span>${RAR[x.r].n} · ${SLOTS[x.s].n}</span></div>`}).join("")}</div>`;
+  return h;
+}
+function openLook(){
+  const L={...lookOf()};dlgCtx={kind:"look",L};drawLook();
+}
+function drawLook(){const L=dlgCtx.L,z=state.sys;
+  showDlg(`<h2>Внешность</h2><div class="lookwrap"><div class="lookprev">${charSvg(z.eq,L,"charmid")}</div><div class="lookopts">
+  <div class="f">Кожа<div class="colpick">${SKINS.map(c=>`<button type="button" class="${L.skin===c?"on":""}" style="background:${c}" data-lk="skin|${c}"></button>`).join("")}</div></div>
+  <div class="f">Волосы<div class="colpick">${HAIRS.map(c=>`<button type="button" class="${L.hair===c?"on":""}" style="background:${c}" data-lk="hair|${c}"></button>`).join("")}</div></div>
+  <div class="f">Причёска<div class="seg">${Object.entries(HSTYLES).map(([k,n])=>`<button type="button" class="${L.style===k?"on":""}" data-lk="style|${k}">${n}</button>`).join("")}</div></div>
+  <div class="f">Глаза<div class="colpick">${EYES.map(c=>`<button type="button" class="${L.eyes===c?"on":""}" style="background:${c}" data-lk="eyes|${c}"></button>`).join("")}</div></div></div></div>
+  <div class="dlgfoot"><div class="r"><button class="btn" data-act="close">Отмена</button><button class="btn primary" data-act="looksave">Сохранить</button></div></div>`,dlgCtx)}
 
 /* ---------- уведомления (push) ---------- */
 const b64u=u8=>b64(u8).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
@@ -2074,6 +2203,9 @@ document.addEventListener("click",async e=>{
   if(d.lrn){lrnFilter=d.lrn;render();return}
   if(d.dopenday){openDiaryDay(d.dopenday);return}
   if(d.systab){sysTab=d.systab;render();return}
+  if(d.cslot){charSlot=charSlot===d.cslot&&d.cslot!=="all"?"all":d.cslot;render();return}
+  if(d.equip){const z=state.sys,x=ITEMS[d.equip];if(x){z.eq[x.s]=z.eq[x.s]===d.equip?undefined:d.equip;if(!z.eq[x.s])delete z.eq[x.s];z.newItems=(z.newItems||[]).filter(i=>i!==d.equip);change();render()}return}
+  if(d.lk){const[k,v]=d.lk.split("|");dlgCtx.L[k]=v;drawLook();return}
   if(d.qdo){toggleQuest(d.qdo);return}
   if(d.deck){deckAct(d.deck==="yes");return}
   if(d.qback){const z=state.sys,q=z.quests.find(x=>x.id===d.qback);if(q){z.quests=z.quests.filter(x=>x.id!==q.id);z.skipped=z.skipped.filter(p=>p!==q.pid);if(z.daily?.ids)z.daily.ids=z.daily.ids.filter(i=>i!==q.id);change();render();toast("Вернула в колоду: «"+q.title+"»")}return}
@@ -2149,6 +2281,8 @@ document.addEventListener("click",async e=>{
     case "install":if(deferredInstall){deferredInstall.prompt();deferredInstall=null;renderNav()}break;
     case "hsave":saveHabit();break;
     case "qnew":openQuest();break;
+    case "charlook":openLook();break;
+    case "looksave":state.sys.look={...dlgCtx.L};change();closeDlg();render();break;
     case "restt":showRest=!showRest;render();break;
     case "qalloff":state.sys.quests.forEach(q=>q.active=false);state.sys.daily={};change();render();toast("Все задания выключены. Включи нужные переключателем");break;
     case "qallon":state.sys.quests.forEach(q=>q.active=true);state.sys.daily={};change();render();break;
