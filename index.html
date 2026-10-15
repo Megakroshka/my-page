@@ -431,6 +431,11 @@ body:has(.selbar) .toast,body:has(.selbar) .errbar{bottom:calc(130px + env(safe-
 .stkempty{grid-column:1/-1;color:var(--soft);font-size:14px;margin:0}
 .linkish{border:0;background:none;padding:0;cursor:pointer;text-align:left;text-transform:capitalize}
 .lnk{border:0;background:none;color:var(--acc);padding:0;font-size:13px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.qbulk{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;font-size:13.5px;color:var(--soft)}.qbulk b{color:var(--ink)}
+.qsw{position:relative;width:40px;height:24px;flex:none;cursor:pointer}.qsw input{position:absolute;opacity:0;width:0;height:0}
+.qsw span{position:absolute;inset:0;border-radius:24px;background:var(--hover);border:1px solid var(--line);transition:background .15s}
+.qsw span::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:var(--soft);transition:transform .15s,background .15s}
+.qsw input:checked+span{background:color-mix(in srgb,var(--ac) 35%,transparent);border-color:var(--ac)}.qsw input:checked+span::after{transform:translateX(16px);background:var(--ac)}
 .pushcard{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;background:var(--panel);border:1px dashed color-mix(in srgb,#4DA3FF 60%,transparent);border-radius:14px;padding:10px 14px;margin-bottom:12px;font-size:14px}
 .pushcard.on{border-style:solid;border-color:color-mix(in srgb,var(--prod) 50%,transparent)}
 /* система */
@@ -1649,7 +1654,7 @@ function sysHook(kind,key,on){try{const z=sysInit();const t=todayStr();
   else if(kind==="lesson"){on?addXp(10,"Урок пройден","brain"):addXp(-10,"Урок отменён","brain")}
 }catch{}}
 /* экран Системы */
-let sysTab="today",deck=null;
+let sysTab="today",deck=null,showRest=false;
 function renderSystem(){
   const z=sysInit();pickDaily();const li=lvlInfo(z.xp),rk=rankOf(li.lvl),[mt,mx]=sysMsg();
   let h=`<div class="sysbox"><div class="sys-top"><div class="sys-rank" style="--rk:${rk[2]}">${rk[1]}</div><div class="sys-main"><div class="sys-lvl">Уровень ${li.lvl}<span>${z.title?esc(z.title):"Охотница"}</span></div>
@@ -1673,7 +1678,7 @@ function sysToday(){
   let h=`<div class="group">⚔️ Задание дня<span class="cnt">${dd.done}/${dd.all}</span></div><div class="qlist">${(dd.qs||[]).map(q=>qRow(q,true)).join("")||'<p class="sub">Нет доступных заданий на сегодня.</p>'}</div>`;
   h+=`<p class="sub" style="margin:6px 2px 0">Выполни все три — получишь бонус. Каждый день подряд бонус растёт. <button class="lnk" data-act="sysreroll">Другие задания</button></p>`;
   const rest=z.quests.filter(q=>q.active&&qAvailable(q)&&!(dd.qs||[]).includes(q));
-  if(rest.length)h+=`<div class="group">Остальное на сегодня<span class="cnt">${rest.filter(qDoneToday).length}/${rest.length}</span></div><div class="qlist">${rest.sort((a,b)=>qDoneToday(a)-qDoneToday(b)).map(q=>qRow(q)).join("")}</div>`;
+  if(rest.length)h+=`<div class="group">Остальное на сегодня<span class="cnt">${rest.filter(qDoneToday).length}/${rest.length}</span><button class="lnk" data-act="restt" style="margin-left:6px">${showRest?"Скрыть":"Показать"}</button></div>${showRest?`<div class="qlist">${rest.sort((a,b)=>qDoneToday(a)-qDoneToday(b)).map(q=>qRow(q)).join("")}</div>`:`<p class="sub" style="margin:0 2px">Ещё ${rest.length} заданий — по желанию, сверх задания дня.</p>`}`;
   return h;
 }
 function deckList(){const z=state.sys,taken=new Set(z.quests.map(q=>q.pid).filter(Boolean)),sk=new Set(z.skipped);return POOL.filter(p=>!taken.has(p.pid)&&!sk.has(p.pid))}
@@ -1699,9 +1704,11 @@ document.addEventListener("pointermove",e=>{if(!swipe)return;swipe.dx=e.clientX-
 document.addEventListener("pointerup",()=>{if(!swipe)return;const s=swipe;swipe=null;if(Math.abs(s.dx)>90)deckAct(s.dx>0);else{s.c.style.transition="transform .2s";s.c.style.transform="";s.c.classList.remove("goR","goL")}});
 function sysMine(){
   const z=state.sys;if(!z.quests.length)return `<div class="empty-state">Пока пусто.</div>`;
-  let h=`<div style="text-align:right;margin-bottom:8px"><button class="btn" data-act="qnew">+ Своё задание</button></div>`;
+  const on=z.quests.filter(q=>q.active).length;
+  let h=`<div class="qbulk"><span>Активных: <b>${on}</b> из ${z.quests.length}${on>15?` · <span style="color:var(--test)">многовато, лучше 8–15</span>`:""}</span><span class="gap"></span>
+    <button class="chip" data-act="qalloff">Выключить все</button><button class="chip" data-act="qallon">Включить все</button><button class="chip" data-act="qallback">Вернуть невыполненные в колоду</button><button class="chip addcat" data-act="qnew">+ Своё задание</button></div>`;
   for(const [k,a] of Object.entries(AREAS)){const qs=z.quests.filter(q=>q.area===k);if(!qs.length)continue;
-    h+=`<div class="group">${a.e} ${a.n}<span class="cnt">${qs.length}</span></div><div class="qlist">${qs.map(q=>`<div class="qrow ${q.active?"":"off"}" style="--ac:${a.c}"><div class="qbody"><b>${esc(q.title)}</b><span>${repLabel(q.rep)} · +${q.xp} · выполнено ${Object.keys(q.done||{}).length} раз</span></div><button class="ib" data-qedit="${q.id}" title="Изменить">${I.edit}</button></div>`).join("")}</div>`}
+    h+=`<div class="group">${a.e} ${a.n}<span class="cnt">${qs.filter(q=>q.active).length}/${qs.length}</span></div><div class="qlist">${qs.map(q=>`<div class="qrow ${q.active?"":"off"}" style="--ac:${a.c}"><label class="qsw" title="${q.active?"Выключить":"Включить"}"><input type="checkbox" data-qtoggle="${q.id}" ${q.active?"checked":""}><span></span></label><div class="qbody"><b>${esc(q.title)}</b><span>${repLabel(q.rep)} · +${q.xp} · выполнено ${Object.keys(q.done||{}).length} раз</span></div>${q.pid?`<button class="ib" data-qback="${q.id}" title="Вернуть в колоду">↩</button>`:""}<button class="ib" data-qedit="${q.id}" title="Изменить">${I.edit}</button></div>`).join("")}</div>`}
   return h;
 }
 function sysAch(){const z=state.sys,n=Object.keys(z.ach).length;
@@ -2069,6 +2076,7 @@ document.addEventListener("click",async e=>{
   if(d.systab){sysTab=d.systab;render();return}
   if(d.qdo){toggleQuest(d.qdo);return}
   if(d.deck){deckAct(d.deck==="yes");return}
+  if(d.qback){const z=state.sys,q=z.quests.find(x=>x.id===d.qback);if(q){z.quests=z.quests.filter(x=>x.id!==q.id);z.skipped=z.skipped.filter(p=>p!==q.pid);if(z.daily?.ids)z.daily.ids=z.daily.ids.filter(i=>i!==q.id);change();render();toast("Вернула в колоду: «"+q.title+"»")}return}
   if(d.qedit){openQuest(state.sys.quests.find(q=>q.id===d.qedit));return}
   if(d.settitle){state.sys.title=state.sys.title===d.settitle?"":d.settitle;change();render();return}
   if(d.dback){if(dDay)cleanupDay(dDay);dView="month";dMonth=dDay?dDay.slice(0,7):dMonth;selStk=-1;render();return}
@@ -2141,6 +2149,12 @@ document.addEventListener("click",async e=>{
     case "install":if(deferredInstall){deferredInstall.prompt();deferredInstall=null;renderNav()}break;
     case "hsave":saveHabit();break;
     case "qnew":openQuest();break;
+    case "restt":showRest=!showRest;render();break;
+    case "qalloff":state.sys.quests.forEach(q=>q.active=false);state.sys.daily={};change();render();toast("Все задания выключены. Включи нужные переключателем");break;
+    case "qallon":state.sys.quests.forEach(q=>q.active=true);state.sys.daily={};change();render();break;
+    case "qallback":{const z=state.sys,keep=z.quests.filter(q=>!q.pid||Object.keys(q.done||{}).length),back=z.quests.length-keep.length;
+      if(!back){toast("Нечего возвращать: все задания уже выполнялись или свои");break}
+      if(confirm(`Вернуть в колоду ${back} заданий, которые ты ещё ни разу не выполняла? Опыт не пропадёт.`)){const ids=new Set(keep.map(q=>q.id));z.quests=keep;z.skipped=[];z.daily={};deck=null;change();sysTab="deck";render();toast(`Вернула ${back}. Теперь выбери свайпом 8–15 самых нужных`)}break}
     case "pushon":enablePush().then(()=>{pushOn=null;render()});break;
     case "pushoff":disablePush().then(()=>{pushOn=null;render()});break;
     case "qsave":saveQuest();break;
@@ -2233,6 +2247,7 @@ document.addEventListener("click",async e=>{
   }
 });
 document.addEventListener("change",async e=>{const s=e.target;
+  if(s.dataset?.qtoggle){const q=state.sys.quests.find(x=>x.id===s.dataset.qtoggle);if(q){q.active=s.checked;if(!q.active&&state.sys.daily?.ids?.includes(q.id)&&!qDoneToday(q))state.sys.daily={};change();render()}return}
   if(s.dataset?.bmf!==undefined){dlgCtx.folders[+s.dataset.bmf].on=s.checked;return}
   if(s.id==="bm-target"){if($("#bm-newname"))dlgCtx.newName=$("#bm-newname").value;dlgCtx.target=s.value;drawBm();return}
   if(s.id==="bmFile"){const f=s.files[0];s.value="";if(!f)return;try{const list=parseBookmarks(await f.text());if(!list.length){toast("В файле не нашлось закладок");return}openBmImport(list)}catch{toast("Не получилось прочитать файл закладок")}return}
